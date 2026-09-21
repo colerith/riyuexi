@@ -184,8 +184,13 @@ function registerConsoleCommands() {
       return;
     }
     if (!storage.onboarding) {
-      storage.onboarding = { tutorialCompleted: false, acknowledgedChangelogVersions: [] };
+      storage.onboarding = {
+        tutorialCompleted: false,
+        acknowledgedChangelogVersions: [],
+        changelogSuppressed: false,
+      };
     }
+    storage.onboarding.changelogSuppressed = false;
     storage.onboarding.acknowledgedChangelogVersions = storage.onboarding.acknowledgedChangelogVersions.filter(
       version => version !== CURRENT_CHANGELOG_VERSION,
     );
@@ -206,6 +211,8 @@ function registerConsoleCommands() {
 
 async function showPanel(showPresetsFirst = false) {
   clearTimeout(panelCloseTimer);
+  // 必读弹窗与主面板不能叠放；否则主面板会在同层级盖住弹窗，形成“日志闪一下”的错觉。
+  if ($('#qr-welcome-popup').length) return;
   if (panelOpening) return panelOpening;
   panelOpening = createOrShowPanel(showPresetsFirst)
     .catch(error => {
@@ -601,6 +608,7 @@ async function initializeScript() {
       onboarding: {
         tutorialCompleted: false,
         acknowledgedChangelogVersions: [],
+        changelogSuppressed: false,
       },
       panelEntries: {
         floatingBall: true,
@@ -652,7 +660,7 @@ async function initializeOptionalFeatures() {
     },
     async () => {
       // 启动顺序固定为：当前版本更新日志 -> 首次新手教学。
-      if (!isChangelogAcknowledged(CURRENT_CHANGELOG_VERSION)) {
+      if (!isChangelogAcknowledged(CURRENT_CHANGELOG_VERSION) && !panel?.hasClass('visible') && !panelOpening) {
         await openChangelog(true);
       }
       if (!isTutorialCompleted()) {

@@ -193,7 +193,7 @@ export async function showChangelogPopup(deps: ShowChangelogPopupDeps): Promise<
   const entries = deps.entries?.length ? deps.entries : [getLatestChangelog()];
   const latest = getLatestChangelog();
   const popup = $(`
-    <div id="qr-welcome-popup">
+    <div id="qr-welcome-popup" style="visibility:hidden">
       <div class="control-panel welcome-panel changelog-panel">
         <header class="panel-header">
           <div class="header-title">更新日志合辑</div>
@@ -206,7 +206,7 @@ export async function showChangelogPopup(deps: ShowChangelogPopupDeps): Promise<
           ${renderChangelogEntries(entries)}
         </div>
         <footer class="changelog-footer">
-          <span class="changelog-footer-tip">${deps.required ? '“我已阅读”下次仍会提醒；“不再显示”会记住本版本。' : `共 ${entries.length} 条更新日志`}</span>
+          <span class="changelog-footer-tip">${deps.required ? '“我已阅读”下次仍会提醒；“不再显示”会永久关闭自动弹出。' : `共 ${entries.length} 条更新日志`}</span>
           <div class="changelog-footer-actions">
             ${
               deps.required
@@ -218,9 +218,6 @@ export async function showChangelogPopup(deps: ShowChangelogPopupDeps): Promise<
       </div>
     </div>
   `);
-  $('body').append(popup);
-  containPanelTouchScroll(popup);
-
   const $existingStyle = $('#control-panel-style');
   if ($existingStyle.length) {
     $existingStyle.html(deps.panelCss);
@@ -230,12 +227,17 @@ export async function showChangelogPopup(deps: ShowChangelogPopupDeps): Promise<
     deps.setStyleTag(styleTag);
   }
 
+  // 先准备样式，再把隐藏的弹窗插入页面；定位完成前绝不参与首帧绘制。
+  $('body').append(popup);
+  containPanelTouchScroll(popup);
+
   const $changelogPanel = popup.find('.changelog-panel');
   $changelogPanel.attr('data-ui-skin', deps.uiSkin);
   const hour = new Date().getHours();
   $changelogPanel.toggleClass('dark-mode', hour < 6 || hour >= 18);
 
-  const vv = window.visualViewport;
+  const hostWindow = popup[0]?.ownerDocument.defaultView || window;
+  const vv = hostWindow.visualViewport;
   const safeTop = Math.max(0, Math.round(vv?.offsetTop || 0));
   const safeLeft = Math.max(0, Math.round(vv?.offsetLeft || 0));
   popup[0]?.style.setProperty('--th-runtime-safe-top', `${safeTop}px`);
@@ -243,15 +245,16 @@ export async function showChangelogPopup(deps: ShowChangelogPopupDeps): Promise<
   $changelogPanel[0]?.style.setProperty('--th-runtime-safe-top', `${safeTop}px`);
   $changelogPanel[0]?.style.setProperty('--th-runtime-safe-left', `${safeLeft}px`);
 
-  const viewW = window.parent.innerWidth;
-  const viewH = window.parent.innerHeight;
+  const viewW = vv?.width || hostWindow.innerWidth;
+  const viewH = vv?.height || hostWindow.innerHeight;
   const panelW = $changelogPanel.outerWidth() ?? 0;
   const panelH = $changelogPanel.outerHeight() ?? 0;
   $changelogPanel.css({
-    top: `${Math.max(safeTop + 20, (viewH - panelH) / 2)}px`,
-    left: `${Math.max(safeLeft + 20, (viewW - panelW) / 2)}px`,
+    top: `${safeTop + Math.max(20, (viewH - panelH) / 2)}px`,
+    left: `${safeLeft + Math.max(20, (viewW - panelW) / 2)}px`,
   });
   deps.enablePanelDragging($changelogPanel);
+  popup.css('visibility', 'visible');
 
   // SillyTavern 的外层页面可能截获滚轮；在日志正文上直接消费滚动，确保长日志始终可下滑。
   const $scrollArea = popup.find('.changelog-content');

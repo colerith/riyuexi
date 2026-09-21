@@ -21,6 +21,7 @@ export let storage: StorageData = {
   onboarding: {
     tutorialCompleted: false,
     acknowledgedChangelogVersions: [],
+    changelogSuppressed: false,
   },
   panelEntries: {
     floatingBall: true,
@@ -193,6 +194,7 @@ export async function loadStorage() {
       onboarding: {
         tutorialCompleted: true,
         acknowledgedChangelogVersions: [],
+        changelogSuppressed: false,
       },
       panelEntries: { ...defaultPanelEntries },
       storageRevision: Date.now(),
@@ -205,6 +207,7 @@ export async function loadStorage() {
       storage.onboarding = {
         tutorialCompleted: !!storage.initialized,
         acknowledgedChangelogVersions: [],
+        changelogSuppressed: false,
       };
     }
     storage.onboarding.tutorialCompleted = !!storage.onboarding.tutorialCompleted;
@@ -215,6 +218,10 @@ export async function loadStorage() {
           : [],
       ),
     );
+    storage.onboarding.changelogSuppressed =
+      typeof storage.onboarding.changelogSuppressed === 'boolean'
+        ? storage.onboarding.changelogSuppressed
+        : storage.onboarding.acknowledgedChangelogVersions.length > 0;
     if (!storage.customQuickRequests || typeof storage.customQuickRequests !== 'object') {
       storage.customQuickRequests = {};
     }
@@ -317,7 +324,11 @@ export function isTutorialCompleted(): boolean {
 
 export function markTutorialCompleted() {
   if (!storage.onboarding) {
-    storage.onboarding = { tutorialCompleted: true, acknowledgedChangelogVersions: [] };
+    storage.onboarding = {
+      tutorialCompleted: true,
+      acknowledgedChangelogVersions: [],
+      changelogSuppressed: false,
+    };
   } else {
     storage.onboarding.tutorialCompleted = true;
   }
@@ -325,13 +336,20 @@ export function markTutorialCompleted() {
 }
 
 export function isChangelogAcknowledged(version: string): boolean {
-  return !!storage.onboarding?.acknowledgedChangelogVersions.includes(version);
+  return !!(
+    storage.onboarding?.changelogSuppressed || storage.onboarding?.acknowledgedChangelogVersions.includes(version)
+  );
 }
 
 export function acknowledgeChangelog(version: string) {
   if (!storage.onboarding) {
-    storage.onboarding = { tutorialCompleted: false, acknowledgedChangelogVersions: [] };
+    storage.onboarding = {
+      tutorialCompleted: false,
+      acknowledgedChangelogVersions: [],
+      changelogSuppressed: false,
+    };
   }
+  storage.onboarding.changelogSuppressed = true;
   storage.onboarding.acknowledgedChangelogVersions = Array.from(
     new Set([...storage.onboarding.acknowledgedChangelogVersions, version]),
   );

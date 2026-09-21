@@ -219,6 +219,8 @@ export interface StorageData {
   onboarding?: {
     tutorialCompleted: boolean;
     acknowledgedChangelogVersions: string[];
+    /** 用户选择“不再显示”后永久关闭更新日志自动弹出。 */
+    changelogSuppressed?: boolean;
   };
   /** 控制面板的宿主页面打开入口；可同时启用多个。 */
   panelEntries?: {

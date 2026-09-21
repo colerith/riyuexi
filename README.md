@@ -2,15 +2,15 @@
 
 ## 预设助手
 
-当前版本：`0.41.2`
+当前版本：`0.41.3`
 
 酒馆助手在线导入：
 
 ```js
-import 'https://cdn.jsdelivr.net/gh/colerith/riyuexi@v0.41.2/file/index-0.41.2.js';
+import 'https://cdn.jsdelivr.net/gh/colerith/riyuexi@v0.41.3/file/index-0.41.3.js';
 ```
 
-- `file/index-0.41.2.js`：生产构建，按版本保留，不覆盖旧文件。
+- `file/index-0.41.3.js`：生产构建，按版本保留，不覆盖旧文件。
 - `tavern-helper/预设助手/`：对应版本的完整源码。
 - `tavern-helper/发布流程.md`：后续版本打包与推送步骤。
 

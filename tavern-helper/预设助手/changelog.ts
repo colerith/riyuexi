@@ -5,9 +5,24 @@ export interface ChangelogEntry {
   bodyHtml: string;
 }
 
-export const CURRENT_CHANGELOG_VERSION = '0.41.2';
+export const CURRENT_CHANGELOG_VERSION = '0.41.3';
 
 export const CHANGELOGS: ChangelogEntry[] = [
+  {
+    version: '0.41.3',
+    title: '⚖️ 日月西 更新日志',
+    intro: '修正更新日志弹窗在打开主面板前短暂闪现和偏移的问题。',
+    bodyHtml: `
+      <section class="changelog-section">
+        <h2>🪟 弹窗体验修正</h2>
+        <ul>
+          <li>“不再显示”现在永久关闭更新日志自动弹出，后续仍可在帮助页手动查看。</li>
+          <li>弹窗会在样式加载和居中定位完成后才显示，消除启动时偏左闪现。</li>
+          <li>更新日志弹窗存在时不再让主面板覆盖它，避免两个界面初始化竞态。</li>
+        </ul>
+      </section>
+    `,
+  },
   {
     version: '0.41.2',
     title: '⚖️ 日月西 更新日志',
