@@ -438,6 +438,28 @@ function bindPanelEvents() {
       button.prop('disabled', false);
     }
   });
+  panel.on('click', '[data-nsfw-home-worldbook]', async event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const mode = String($(event.currentTarget).attr('data-nsfw-home-worldbook')) as 'none' | 'blue' | 'green';
+    if (!['none', 'blue', 'green'].includes(mode)) return;
+    const preset = storage.presets[getActivePresetId()];
+    if (!preset) return;
+    const button = $(event.currentTarget).prop('disabled', true);
+    preset.nsfw = { ...normalizeNsfwSettings(preset.nsfw), worldbookMode: mode };
+    preset.updateTime = Date.now();
+    saveStorage();
+    refreshActiveSettings();
+    try {
+      await applyNsfwSettings();
+      await renderStatusDisplay();
+    } catch (error) {
+      console.warn('预设助手[NSFW世界书]: 首页联动切换失败', error);
+      toastr.error('NSFW 世界书联动切换失败，请查看控制台。');
+    } finally {
+      button.prop('disabled', false);
+    }
+  });
   panel.on('change', '#panel-theme-mode', event => {
     const mode = String($(event.currentTarget).val()) as 'system' | 'day' | 'night';
     if (!['system', 'day', 'night'].includes(mode)) return;

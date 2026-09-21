@@ -16,6 +16,10 @@ export interface NsfwSettings {
   closeKeywords: string[];
   /** 摘要显示场景结束后继续保留 NSFW 指导的回合数。 */
   holdTurns: number;
+  /** 总控关闭时，对带标记的世界书条目执行的过滤范围。 */
+  worldbookMode: 'none' | 'blue' | 'green';
+  /** 世界书条目名称中任一命中即视为 NSFW 条目。 */
+  worldbookMarkers: string[];
 }
 
 export interface QuickSwitchPromptState {

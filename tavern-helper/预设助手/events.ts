@@ -3609,6 +3609,12 @@ export function bindEditorSettingHandler(deps: BindEditorSettingDeps) {
     btn.siblings('[data-nsfw-hold]').removeClass('active');
     btn.addClass('active');
   });
+
+  panel.on('click', '#preset-editor-container button[data-nsfw-worldbook]', (e: JQuery.ClickEvent) => {
+    const btn = $(e.currentTarget);
+    btn.siblings('[data-nsfw-worldbook]').removeClass('active');
+    btn.addClass('active');
+  });
 }
 
 interface BindStatusItemDeps {
@@ -5028,6 +5034,7 @@ export function bindGeneralActionHandler(deps: BindGeneralActionsDeps) {
       case 'reset_nsfw_keywords': {
         panel.find('#nsfw-open-keywords').val(DEFAULT_NSFW_SETTINGS.openKeywords.join('、'));
         panel.find('#nsfw-close-keywords').val(DEFAULT_NSFW_SETTINGS.closeKeywords.join('、'));
+        panel.find('#nsfw-worldbook-markers').val(DEFAULT_NSFW_SETTINGS.worldbookMarkers.join('、'));
         toastr.success('NSFW 判断词表已恢复默认值，保存预设后生效。');
         break;
       }
@@ -5046,12 +5053,15 @@ export function bindGeneralActionHandler(deps: BindGeneralActionsDeps) {
         };
         const nsfwMode = String(panel.find('[data-nsfw-mode].active').data('nsfw-mode') || 'off');
         const nsfwHoldTurns = Number(panel.find('[data-nsfw-hold].active').data('nsfw-hold')) || 0;
+        const nsfwWorldbookMode = String(panel.find('[data-nsfw-worldbook].active').data('nsfw-worldbook') || 'none');
         editingPreset.nsfw = normalizeNsfwSettings({
           mode: nsfwMode === 'on' || nsfwMode === 'auto' ? nsfwMode : 'off',
           configured: true,
           openKeywords: splitNsfwKeywords(panel.find('#nsfw-open-keywords').val()),
           closeKeywords: splitNsfwKeywords(panel.find('#nsfw-close-keywords').val()),
           holdTurns: nsfwHoldTurns,
+          worldbookMode: nsfwWorldbookMode === 'blue' || nsfwWorldbookMode === 'green' ? nsfwWorldbookMode : 'none',
+          worldbookMarkers: splitNsfwKeywords(panel.find('#nsfw-worldbook-markers').val()),
         });
         panel.find('.len-def').each(function () {
           const type = $(this).data('type') as 'short' | 'medium' | 'long';

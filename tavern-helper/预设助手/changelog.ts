@@ -5,9 +5,25 @@ export interface ChangelogEntry {
   bodyHtml: string;
 }
 
-export const CURRENT_CHANGELOG_VERSION = '0.41';
+export const CURRENT_CHANGELOG_VERSION = '0.41.1';
 
 export const CHANGELOGS: ChangelogEntry[] = [
+  {
+    version: '0.41.1',
+    title: '⚖️ 日月西 更新日志',
+    intro: 'NSFW 判断已对齐果实之心的总控、meow 摘要字段与世界书联动机制。',
+    bodyHtml: `
+      <section class="changelog-section">
+        <h2>🍎 NSFW 联动修正</h2>
+        <ul>
+          <li>总控固定识别“❖涩涩一键开关❖”（ID：098af4e4-5021-4c23-b013-b4646684994b），避免误认其他 NSFW 条目。</li>
+          <li>meow 摘要改为读取“NSFW：数字/20”，不再把其他十分制进度误判为 NSFW。</li>
+          <li>新增 NSFW 世界书联动：总控关闭时可选择过滤常驻蓝灯，或同时过滤蓝灯与绿灯条目；默认按条目名称中的 NSFW 标记识别。</li>
+          <li>首页和预设编辑页均可配置世界书联动，并显示最近一次过滤结果；总控激活圆点继续同步到悬浮球和快速回复栏。</li>
+        </ul>
+      </section>
+    `,
+  },
   {
     version: '0.41',
     title: '⚖️ 日月西 更新日志',

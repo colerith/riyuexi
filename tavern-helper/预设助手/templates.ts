@@ -2789,6 +2789,15 @@ export const panelCss = `
        color: var(--panel-text-accent) !important;
        font-weight: 700 !important;
    }
+   #control-panel-container .nsfw-worldbook-status {
+       width: 100%;
+       margin: 2px 0 0;
+       padding-left: 10px;
+       color: var(--panel-text-value);
+       font-size: .76em;
+       line-height: 1.4;
+   }
+   #control-panel-container .nsfw-worldbook-modes button { font-size: .76em !important; }
    #control-panel-container .nsfw-editor-live {
        display: inline-flex;
        align-items: center;
@@ -2820,6 +2829,17 @@ export const panelCss = `
        line-height: 1.55 !important;
    }
    #control-panel-container .nsfw-hold-row { margin-top: 14px !important; }
+   #control-panel-container .nsfw-worldbook-config {
+       display: grid;
+       gap: 10px;
+       margin-top: 16px;
+       padding-top: 15px;
+       border-top: 1px solid var(--panel-border);
+   }
+   #control-panel-container .nsfw-worldbook-config .setting-group-title { margin: 0; }
+   #control-panel-container .nsfw-worldbook-config .setting-help { margin-bottom: 0; }
+   #control-panel-container .nsfw-worldbook-marker-field { margin-top: 2px; }
+   #control-panel-container .nsfw-worldbook-marker-field textarea { min-height: 58px !important; }
    #control-panel-container .nsfw-reset-keywords { width: 100%; margin-top: 12px; }
    #control-panel-container .nsfw-default-summary { margin: 9px 2px 0; }
    @media (max-width: 480px) {

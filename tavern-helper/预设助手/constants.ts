@@ -580,6 +580,7 @@ export const defaultPreset: QRPreset = {
     ...DEFAULT_NSFW_SETTINGS,
     openKeywords: [...DEFAULT_NSFW_SETTINGS.openKeywords],
     closeKeywords: [...DEFAULT_NSFW_SETTINGS.closeKeywords],
+    worldbookMarkers: [...DEFAULT_NSFW_SETTINGS.worldbookMarkers],
   },
   commands: { ...defaultCommands },
   lengthDefinitions: {

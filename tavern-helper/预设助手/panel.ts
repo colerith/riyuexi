@@ -529,6 +529,12 @@ export async function renderStatusDisplay(deps: RenderStatusDisplayDeps) {
     ['on', '常开'],
     ['auto', '自动'],
   ] as const;
+  const nsfwWorldbookModeMap = { none: '不联动', blue: '关蓝灯', green: '关蓝绿灯' } as const;
+  const nsfwWorldbookModes = [
+    ['none', '不联动'],
+    ['blue', '关蓝灯'],
+    ['green', '关蓝绿灯'],
+  ] as const;
   const modeMap: { [key: string]: string } = { none: '常规', dialogue: '对话', outline: '大纲', summary: '总结' };
   const perspectiveMap: { [key: string]: string } = {
     third_person_omniscient: '全知',
@@ -581,7 +587,7 @@ export async function renderStatusDisplay(deps: RenderStatusDisplayDeps) {
   const statusHtml = `
        ${presetInfoHtml}
        <div class="status-item" data-action="edit_status_setting" data-preset-id="${activePresetId}" data-target="wordCount"><p class="status-label">字数</p><p class="status-value">${wcString}</p></div>
-       <div class="status-item nsfw-status-item ${nsfwStatus.active ? 'is-active' : ''}" data-action="edit_status_setting" data-preset-id="${activePresetId}" data-target="nsfw" title="${escapeHtml(nsfwStatus.note)}"><p class="status-label">NSFW</p><p class="status-value"><i class="nsfw-state-dot"></i>${nsfwValue}</p><div class="nsfw-home-modes" role="group" aria-label="NSFW 模式">${nsfwHomeModes.map(([mode, label]) => `<button type="button" class="${nsfwHomeMode === mode ? 'active' : ''}" data-nsfw-home-mode="${mode}">${label}</button>`).join('')}</div></div>
+       <div class="status-item nsfw-status-item ${nsfwStatus.active ? 'is-active' : ''}" data-action="edit_status_setting" data-preset-id="${activePresetId}" data-target="nsfw" title="${escapeHtml(`${nsfwStatus.note}；${nsfwStatus.worldbook.note}`)}"><p class="status-label">NSFW</p><p class="status-value"><i class="nsfw-state-dot"></i>${nsfwValue}</p><div class="nsfw-home-modes" role="group" aria-label="NSFW 模式">${nsfwHomeModes.map(([mode, label]) => `<button type="button" class="${nsfwHomeMode === mode ? 'active' : ''}" data-nsfw-home-mode="${mode}">${label}</button>`).join('')}</div><p class="nsfw-worldbook-status">世界书：${nsfwWorldbookModeMap[nsfwSettings.worldbookMode]} · ${escapeHtml(nsfwStatus.worldbook.note)}</p><div class="nsfw-home-modes nsfw-worldbook-modes" role="group" aria-label="NSFW 世界书联动">${nsfwWorldbookModes.map(([mode, label]) => `<button type="button" class="${nsfwSettings.worldbookMode === mode ? 'active' : ''}" data-nsfw-home-worldbook="${mode}">${label}</button>`).join('')}</div></div>
        <div class="status-item" data-action="edit_status_setting" data-preset-id="${activePresetId}" data-target="aiMode"><p class="status-label">AI模式</p><p class="status-value">${modeMap[activeSettings.aiMode] || '未知'}</p></div>
        <div class="status-grid">${presetStatus}</div>
    `;
@@ -757,11 +763,16 @@ export async function renderPresetEditor(deps: RenderPresetEditorDeps) {
     ['on', '常开'],
     ['auto', '自动判断'],
   ];
+  const nsfwWorldbookModeLabels: Array<[NsfwSettings['worldbookMode'], string]> = [
+    ['none', '不联动'],
+    ['blue', '关蓝灯'],
+    ['green', '关蓝绿灯'],
+  ];
   const nsfwHtml = `
     <div class="setting-group nsfw-setting-group">
       <div class="setting-group-title">NSFW 自动判断</div>
       <div class="nsfw-editor-live ${editorNsfwStatus.active ? 'is-active' : ''}"><i></i><span>当前预设总控：${editorNsfwStatus.available ? (editorNsfwStatus.active ? '已激活' : '未激活') : '未找到'}</span></div>
-      <p class="setting-help">自动模式会在发送前判断：关闭词优先，其次启动词；未命中时读取上一条回复的 &lt;meow_FM&gt; 摘要进度，摘要缺失才回退到正文自检标记。</p>
+      <p class="setting-help">自动模式会在发送前判断：关闭词优先，其次启动词；未命中时读取上一条回复 &lt;meow_FM&gt; 中的“NSFW：当前回合/20”，摘要缺失才回退到正文自检标记。</p>
       <div class="button-group nsfw-mode-buttons">
         ${nsfwModeLabels.map(([mode, label]) => `<button class="${displayedNsfwMode === mode ? 'active' : ''}" data-nsfw-mode="${mode}">${label}</button>`).join('')}
       </div>
@@ -775,8 +786,16 @@ export async function renderPresetEditor(deps: RenderPresetEditorDeps) {
           ${[0, 1, 2].map(turns => `<button class="${nsfw.holdTurns === turns ? 'active' : ''}" data-nsfw-hold="${turns}">${turns} 回合</button>`).join('')}
         </div>
       </div>
+      <div class="nsfw-worldbook-config">
+        <div class="setting-group-title">NSFW 世界书联动</div>
+        <p class="setting-help">仅在“❖涩涩一键开关❖”关闭时过滤名称带标记的条目；蓝灯指常驻条目，绿灯包含非常驻/关键词或向量条目。当前效果：${escapeHtml(editorNsfwStatus.worldbook.note)}</p>
+        <div class="button-group nsfw-mode-buttons">
+          ${nsfwWorldbookModeLabels.map(([mode, label]) => `<button class="${nsfw.worldbookMode === mode ? 'active' : ''}" data-nsfw-worldbook="${mode}">${label}</button>`).join('')}
+        </div>
+        <label class="nsfw-keyword-field nsfw-worldbook-marker-field"><span>条目名称标记</span><small>按条目“名称/备注”匹配，不区分大小写；多个标记可用顿号、逗号、空格或换行分隔。</small><textarea id="nsfw-worldbook-markers" rows="2">${escapeHtml(nsfw.worldbookMarkers.join('、'))}</textarea></label>
+      </div>
       <button type="button" class="nsfw-reset-keywords" data-action="reset_nsfw_keywords">恢复默认词表</button>
-      <p class="setting-help nsfw-default-summary">默认词表：${DEFAULT_NSFW_SETTINGS.openKeywords.length} 个启动词，${DEFAULT_NSFW_SETTINGS.closeKeywords.length} 个关闭词。0/10 按场景结束处理；其他“好感度 8/10”一类指标不会被当作 NSFW 进度。</p>
+      <p class="setting-help nsfw-default-summary">默认词表：${DEFAULT_NSFW_SETTINGS.openKeywords.length} 个启动词，${DEFAULT_NSFW_SETTINGS.closeKeywords.length} 个关闭词；世界书默认标记为 NSFW。摘要只读取明确的“NSFW：数字/20”，不会误判其他进度值。</p>
     </div>`;
   container.append(nsfwHtml);
 

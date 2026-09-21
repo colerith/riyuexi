@@ -1,5 +1,8 @@
 import type { NsfwSettings, QRPreset } from './types';
 
+export const NSFW_MASTER_PROMPT_ID = '098af4e4-5021-4c23-b013-b4646684994b';
+export const NSFW_MASTER_PROMPT_NAME = '❖涩涩一键开关❖';
+
 export const DEFAULT_NSFW_SETTINGS: NsfwSettings = {
   mode: 'off',
   configured: false,
@@ -42,12 +45,22 @@ export const DEFAULT_NSFW_SETTINGS: NsfwSettings = {
   ],
   closeKeywords: ['事后', '结束性爱', '完事后'],
   holdTurns: 0,
+  worldbookMode: 'none',
+  worldbookMarkers: ['NSFW'],
 };
+
+export interface NsfwWorldbookRuntimeStatus {
+  mode: NsfwSettings['worldbookMode'];
+  removed: number;
+  scanned: number;
+  note: string;
+}
 
 export interface NsfwRuntimeStatus {
   available: boolean;
   active: boolean;
   note: string;
+  worldbook: NsfwWorldbookRuntimeStatus;
 }
 
 interface NsfwPresetDeps {
@@ -60,16 +73,28 @@ interface RegisterNsfwAutomationDeps extends NsfwPresetDeps {
 }
 
 const FM_BLOCK = /<meow_FM>([\s\S]{0,4000}?)<\/meow_FM>/i;
-const FM_SCENE = /^[ \t]*scene\s*[:：](.*)$/im;
-const SEX_LABELED = /(?:性爱|性事|情欲|欢爱|交合|云雨|NSFW)\s*进度\s*[:：]?\s*(\d{1,2})\s*\/\s*10/i;
-const ANY_TEN = /(.{0,6})(\d{1,2})\s*\/\s*10/g;
-const OTHER_METRIC = /[度值率]\s*[:：]?\s*$/;
+const FM_NSFW = /^[ \t]*NSFW\s*[:：]\s*(\d{1,2})\s*\/\s*20\b/im;
 const NSFW_SCENE_MARK = /舒适性爱检查|性爱柔和检测/;
+const WORLDBOOK_GROUPS = ['globalLore', 'characterLore', 'chatLore', 'personaLore'] as const;
+
+type WorldbookEntry = {
+  comment?: unknown;
+  name?: unknown;
+  constant?: boolean;
+};
+
+type WorldbookPayload = Partial<Record<(typeof WORLDBOOK_GROUPS)[number], WorldbookEntry[]>>;
 
 let runtimeStatus: NsfwRuntimeStatus = {
   available: false,
   active: false,
   note: '尚未检测到预设中的 NSFW 总控',
+  worldbook: {
+    mode: 'none',
+    removed: 0,
+    scanned: 0,
+    note: 'NSFW 世界书联动未开启',
+  },
 };
 const statusListeners = new Set<(status: NsfwRuntimeStatus) => void>();
 let quietStreak = 0;
@@ -85,12 +110,15 @@ function cleanKeywordList(value: unknown, fallback: string[]) {
 
 export function normalizeNsfwSettings(value?: Partial<NsfwSettings> | null): NsfwSettings {
   const mode = value?.mode === 'on' || value?.mode === 'auto' ? value.mode : 'off';
+  const worldbookMarkers = cleanKeywordList(value?.worldbookMarkers, DEFAULT_NSFW_SETTINGS.worldbookMarkers);
   return {
     mode,
     configured: value?.configured === true,
     openKeywords: cleanKeywordList(value?.openKeywords, DEFAULT_NSFW_SETTINGS.openKeywords),
     closeKeywords: cleanKeywordList(value?.closeKeywords, DEFAULT_NSFW_SETTINGS.closeKeywords),
     holdTurns: Math.min(2, Math.max(0, Number(value?.holdTurns) || 0)),
+    worldbookMode: value?.worldbookMode === 'blue' || value?.worldbookMode === 'green' ? value.worldbookMode : 'none',
+    worldbookMarkers: worldbookMarkers.length ? worldbookMarkers : [...DEFAULT_NSFW_SETTINGS.worldbookMarkers],
   };
 }
 
@@ -98,18 +126,23 @@ export function splitNsfwKeywords(value: unknown) {
   return cleanKeywordList(String(value || '').split(/[\n,，、;；|｜\s]+/), []);
 }
 
-function publishStatus(next: NsfwRuntimeStatus) {
+function publishStatus(next: Omit<NsfwRuntimeStatus, 'worldbook'> & { worldbook?: NsfwWorldbookRuntimeStatus }) {
+  const complete = { ...next, worldbook: next.worldbook || runtimeStatus.worldbook };
   const changed =
-    next.available !== runtimeStatus.available ||
-    next.active !== runtimeStatus.active ||
-    next.note !== runtimeStatus.note;
-  runtimeStatus = next;
+    complete.available !== runtimeStatus.available ||
+    complete.active !== runtimeStatus.active ||
+    complete.note !== runtimeStatus.note ||
+    complete.worldbook.mode !== runtimeStatus.worldbook.mode ||
+    complete.worldbook.removed !== runtimeStatus.worldbook.removed ||
+    complete.worldbook.scanned !== runtimeStatus.worldbook.scanned ||
+    complete.worldbook.note !== runtimeStatus.worldbook.note;
+  runtimeStatus = complete;
   if (!changed) return;
-  statusListeners.forEach(listener => listener({ ...runtimeStatus }));
+  statusListeners.forEach(listener => listener(getNsfwRuntimeStatus()));
 }
 
 export function getNsfwRuntimeStatus() {
-  return { ...runtimeStatus };
+  return { ...runtimeStatus, worldbook: { ...runtimeStatus.worldbook } };
 }
 
 export function onNsfwStatusChange(listener: (status: NsfwRuntimeStatus) => void) {
@@ -118,21 +151,28 @@ export function onNsfwStatusChange(listener: (status: NsfwRuntimeStatus) => void
   return () => statusListeners.delete(listener);
 }
 
-function initPrompt(preset: Preset) {
-  return (preset.prompts || []).find(
-    prompt =>
-      /\{\{trim\}\}/.test(prompt.content || '') && ((prompt.content || '').match(/\{\{setvar::/g) || []).length > 30,
+export function findNsfwMaster(preset: Preset) {
+  const prompts = preset.prompts || [];
+  return (
+    prompts.find(prompt => prompt.id === NSFW_MASTER_PROMPT_ID) ||
+    prompts.find(prompt => prompt.name === NSFW_MASTER_PROMPT_NAME) ||
+    null
   );
 }
 
-export function findNsfwMaster(preset: Preset) {
-  const initializer = initPrompt(preset);
-  const prompts = preset.prompts || [];
-  return (
-    prompts.find(prompt => prompt !== initializer && /\{\{setglobalvar::NSFW::/i.test(prompt.content || '')) ||
-    prompts.find(prompt => /NSFW/i.test(prompt.name || '') && /总控|总开关|一键/.test(prompt.name || '')) ||
-    null
-  );
+function publishWorldbookStatus(status: NsfwWorldbookRuntimeStatus) {
+  publishStatus({ ...runtimeStatus, worldbook: status });
+}
+
+function refreshWorldbookModeStatus(config: NsfwSettings) {
+  const current = runtimeStatus.worldbook;
+  if (current.mode === config.worldbookMode) return;
+  publishWorldbookStatus({
+    mode: config.worldbookMode,
+    removed: 0,
+    scanned: 0,
+    note: config.worldbookMode === 'none' ? 'NSFW 世界书联动未开启' : '等待下一次世界书加载；总控关闭时执行过滤',
+  });
 }
 
 function readCurrentNsfwStatus(note?: string) {
@@ -200,6 +240,7 @@ async function setNsfwPromptEnabled(enabled: boolean, deps: NsfwPresetDeps, note
 
 export async function applyConfiguredNsfwMode(settings: QRPreset, deps: NsfwPresetDeps) {
   const config = normalizeNsfwSettings(settings.nsfw);
+  refreshWorldbookModeStatus(config);
   if (!config.configured) {
     readCurrentNsfwStatus('尚未配置自动判断，保持预设当前总控状态');
     return;
@@ -224,19 +265,86 @@ function hitKeyword(text: string, words: string[]) {
 export function detectSexualScene(reply: string): boolean | null {
   const block = FM_BLOCK.exec(String(reply || ''));
   if (!block) return null;
-  const labeled = SEX_LABELED.exec(block[1]);
-  if (labeled) return Number(labeled[1]) > 0;
+  const match = FM_NSFW.exec(block[1]);
+  return match ? Number(match[1]) > 0 : null;
+}
 
-  const scene = FM_SCENE.exec(block[1]);
-  const haystack = scene ? scene[1] : block[1];
-  const found: number[] = [];
-  ANY_TEN.lastIndex = 0;
-  for (let match = ANY_TEN.exec(haystack); match; match = ANY_TEN.exec(haystack)) {
-    if (!OTHER_METRIC.test(match[1])) found.push(Number(match[2]));
+function worldbookEntryName(entry: WorldbookEntry) {
+  return String(entry.comment ?? entry.name ?? '')
+    .trim()
+    .toLowerCase();
+}
+
+function filterNsfwWorldbook(payload: unknown, deps: RegisterNsfwAutomationDeps) {
+  const config = normalizeNsfwSettings(deps.getSettings().nsfw);
+  refreshWorldbookModeStatus(config);
+  if (config.worldbookMode === 'none') return;
+
+  let target: ReturnType<typeof findNsfwMaster>;
+  try {
+    target = findNsfwMaster(getPreset('in_use'));
+  } catch (error) {
+    console.warn('预设助手[NSFW世界书]: 读取总控状态失败，已放行世界书', error);
+    publishWorldbookStatus({
+      mode: config.worldbookMode,
+      removed: 0,
+      scanned: 0,
+      note: '无法读取总控，已放行全部世界书条目',
+    });
+    return;
   }
-  if (!found.length) return false;
-  if (new Set(found).size > 1) return null;
-  return found[0] > 0;
+
+  if (!target) {
+    publishWorldbookStatus({
+      mode: config.worldbookMode,
+      removed: 0,
+      scanned: 0,
+      note: '未找到指定总控，已放行全部世界书条目',
+    });
+    return;
+  }
+  if (target.enabled) {
+    publishWorldbookStatus({
+      mode: config.worldbookMode,
+      removed: 0,
+      scanned: 0,
+      note: 'NSFW 总控已激活，世界书条目全部放行',
+    });
+    return;
+  }
+
+  const source = payload && typeof payload === 'object' ? (payload as WorldbookPayload) : {};
+  const markers = config.worldbookMarkers.map(marker => marker.toLowerCase());
+  let scanned = 0;
+  let removed = 0;
+  let blue = 0;
+  let green = 0;
+  let kept = 0;
+  for (const group of WORLDBOOK_GROUPS) {
+    const entries = source[group];
+    if (!Array.isArray(entries)) continue;
+    scanned += entries.length;
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const entry = entries[index];
+      const marked = markers.some(marker => worldbookEntryName(entry).includes(marker));
+      if (!marked) continue;
+      const isBlue = entry.constant === true;
+      if (config.worldbookMode === 'blue' && !isBlue) {
+        kept += 1;
+        continue;
+      }
+      entries.splice(index, 1);
+      removed += 1;
+      if (isBlue) blue += 1;
+      else green += 1;
+    }
+  }
+
+  const note = scanned
+    ? `总控关闭：已过滤 ${removed} 条（蓝灯 ${blue} / 绿灯 ${green}）${kept ? `，保留 ${kept} 条绿灯按原关键词触发` : ''}`
+    : '本次未收到可过滤的世界书条目，已安全放行';
+  publishWorldbookStatus({ mode: config.worldbookMode, removed, scanned, note });
+  console.info(`预设助手[NSFW世界书]: ${note}`);
 }
 
 function decideNsfw(active: boolean, input: string, reply: string, config: NsfwSettings) {
@@ -366,6 +474,9 @@ export function registerNsfwAutomation(deps: RegisterNsfwAutomationDeps) {
   subscribe(tavern_events.GENERATION_STOPPED, () => {
     turnKey = '';
   });
+  subscribe(tavern_events.WORLDINFO_ENTRIES_LOADED || 'worldinfo_entries_loaded', payload =>
+    filterNsfwWorldbook(payload, deps),
+  );
   const reset = () => {
     scopeKey = '';
     resetDecisionState();
