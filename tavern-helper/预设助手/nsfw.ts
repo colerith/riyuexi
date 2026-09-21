@@ -160,8 +160,11 @@ export function findNsfwMaster(preset: Preset) {
   );
 }
 
-function publishWorldbookStatus(status: NsfwWorldbookRuntimeStatus) {
-  publishStatus({ ...runtimeStatus, worldbook: status });
+function publishWorldbookStatus(
+  status: NsfwWorldbookRuntimeStatus,
+  master?: Pick<NsfwRuntimeStatus, 'available' | 'active' | 'note'>,
+) {
+  publishStatus({ ...(master || runtimeStatus), worldbook: status });
 }
 
 function refreshWorldbookModeStatus(config: NsfwSettings) {
@@ -295,21 +298,27 @@ function filterNsfwWorldbook(payload: unknown, deps: RegisterNsfwAutomationDeps)
   }
 
   if (!target) {
-    publishWorldbookStatus({
-      mode: config.worldbookMode,
-      removed: 0,
-      scanned: 0,
-      note: '未找到指定总控，已放行全部世界书条目',
-    });
+    publishWorldbookStatus(
+      {
+        mode: config.worldbookMode,
+        removed: 0,
+        scanned: 0,
+        note: '未找到指定总控，已放行全部世界书条目',
+      },
+      { available: false, active: false, note: '未找到预设中的 NSFW 总控条目' },
+    );
     return;
   }
   if (target.enabled) {
-    publishWorldbookStatus({
-      mode: config.worldbookMode,
-      removed: 0,
-      scanned: 0,
-      note: 'NSFW 总控已激活，世界书条目全部放行',
-    });
+    publishWorldbookStatus(
+      {
+        mode: config.worldbookMode,
+        removed: 0,
+        scanned: 0,
+        note: 'NSFW 总控已激活，世界书条目全部放行',
+      },
+      { available: true, active: true, note: '预设中的 NSFW 总控已激活' },
+    );
     return;
   }
 
@@ -343,7 +352,10 @@ function filterNsfwWorldbook(payload: unknown, deps: RegisterNsfwAutomationDeps)
   const note = scanned
     ? `总控关闭：已过滤 ${removed} 条（蓝灯 ${blue} / 绿灯 ${green}）${kept ? `，保留 ${kept} 条绿灯按原关键词触发` : ''}`
     : '本次未收到可过滤的世界书条目，已安全放行';
-  publishWorldbookStatus({ mode: config.worldbookMode, removed, scanned, note });
+  publishWorldbookStatus(
+    { mode: config.worldbookMode, removed, scanned, note },
+    { available: true, active: false, note: '预设中的 NSFW 总控未激活' },
+  );
   console.info(`预设助手[NSFW世界书]: ${note}`);
 }
 

@@ -5,9 +5,23 @@ export interface ChangelogEntry {
   bodyHtml: string;
 }
 
-export const CURRENT_CHANGELOG_VERSION = '0.41.1';
+export const CURRENT_CHANGELOG_VERSION = '0.41.2';
 
 export const CHANGELOGS: ChangelogEntry[] = [
+  {
+    version: '0.41.2',
+    title: '⚖️ 日月西 更新日志',
+    intro: '修正 NSFW 总控与世界书联动状态显示不一致的问题。',
+    bodyHtml: `
+      <section class="changelog-section">
+        <h2>🔧 状态同步修正</h2>
+        <ul>
+          <li>世界书加载时会同步刷新当前总控状态，避免总控圆点和世界书状态使用不同时间点的数据。</li>
+          <li>世界书区域改为显示实时“联动状态”；历史过滤结果仅标注为“上次加载”，不再与当前状态混淆。</li>
+        </ul>
+      </section>
+    `,
+  },
   {
     version: '0.41.1',
     title: '⚖️ 日月西 更新日志',
