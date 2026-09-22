@@ -526,6 +526,8 @@ export const panelCss = `
         --th-runtime-safe-right: 0px;
         --th-runtime-safe-bottom: 0px;
         --th-runtime-safe-left: 0px;
+        --th-runtime-view-width: 100vw;
+        --th-runtime-view-height: 100vh;
         --th-panel-safe-top: max(env(safe-area-inset-top, 0px), var(--th-runtime-safe-top));
         --th-panel-safe-right: max(env(safe-area-inset-right, 0px), var(--th-runtime-safe-right));
         --th-panel-safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--th-runtime-safe-bottom));
@@ -533,11 +535,37 @@ export const panelCss = `
         --th-panel-header-height: calc(50px + var(--th-panel-safe-top));
     }
     #control-panel-container, #qr-welcome-popup {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--panel-overlay-bg);
-        z-index: 10000; opacity: 0; transition: opacity 0.3s ease;
-        overflow: hidden; overscroll-behavior: none; pointer-events: none; font-family: var(--font-main); color: var(--panel-text-main);
+        position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; height: 100dvh !important; background-color: var(--panel-overlay-bg);
+        z-index: 2147483000 !important; opacity: 0; transition: opacity 0.3s ease;
+        isolation: isolate; overflow: hidden; overscroll-behavior: none; pointer-events: none; font-family: var(--font-main); color: var(--panel-text-main);
     }
-    #control-panel-container.visible, #qr-welcome-popup.visible { opacity: 1; pointer-events: auto; }
+    #control-panel-container.visible, #qr-welcome-popup.visible { opacity: 1 !important; pointer-events: auto !important; }
+    #control-panel-container.is-compact-layout {
+        width: var(--th-runtime-view-width) !important;
+        height: var(--th-runtime-view-height) !important;
+    }
+    #control-panel-container.is-compact-layout > .control-panel {
+        box-sizing: border-box !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        height: 100% !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        transform: none !important;
+    }
+    #control-panel-container.is-compact-layout > .control-panel > .panel-main,
+    #control-panel-container.is-compact-layout > .control-panel > .panel-child {
+        height: 100% !important;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        overflow: hidden;
+    }
+    #control-panel-container.is-compact-layout .panel-footer { display: none !important; }
     .control-panel {
         background: var(--panel-bg); border-radius: 16px; border: 1px solid var(--panel-border);
         box-shadow: var(--panel-shadow); width: 90%; max-width: 480px; backdrop-filter: blur(12px);

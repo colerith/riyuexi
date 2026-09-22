@@ -97,6 +97,7 @@ let unregisterConsoleCommands: (() => void) | null = null;
 let panelOpening: Promise<void> | null = null;
 let panelCloseTimer: ReturnType<typeof setTimeout> | undefined;
 let quickReplyFallback = false;
+let unregisterPanelViewportSync: (() => void) | null = null;
 
 function syncNsfwEntryIndicators(status: NsfwRuntimeStatus) {
   controlButtonController?.setNsfwActive(status.active);
@@ -218,6 +219,7 @@ async function showPanel(showPresetsFirst = false) {
     .catch(error => {
       panel?.remove();
       panel = null;
+      unregisterPanelViewportSync?.();
       hostEntryController?.setPanelOpen(false);
       throw error;
     })
@@ -241,21 +243,57 @@ function prepareControlPanelLayout($container: JQuery<HTMLElement>) {
   const safeLeft = Math.max(0, Math.round(viewport?.offsetLeft || 0));
   const safeRight = Math.max(0, Math.round((hostWindow.innerWidth || 0) - viewWidth - safeLeft));
   const safeBottom = Math.max(0, Math.round((hostWindow.innerHeight || 0) - viewHeight - safeTop));
+  const compactLayout = viewWidth <= 768 || viewHeight <= 620 || (viewWidth <= 900 && viewHeight > viewWidth);
 
   [containerNode, controlPanelNode].forEach(node => {
     node.style.setProperty('--th-runtime-safe-top', `${safeTop}px`);
     node.style.setProperty('--th-runtime-safe-right', `${safeRight}px`);
     node.style.setProperty('--th-runtime-safe-bottom', `${safeBottom}px`);
     node.style.setProperty('--th-runtime-safe-left', `${safeLeft}px`);
+    node.style.setProperty('--th-runtime-view-width', `${Math.max(1, Math.round(viewWidth))}px`);
+    node.style.setProperty('--th-runtime-view-height', `${Math.max(1, Math.round(viewHeight))}px`);
   });
 
-  // 手机端由全屏媒体查询定位；电脑端必须在 overlay 显示前完成首次居中，避免先在右下角闪现。
-  if (viewWidth <= 768 || viewHeight <= 620 || controlPanelNode.style.top || controlPanelNode.style.left) return;
+  // 部分平板竖屏的媒体查询宽度与 visualViewport 不一致，必须由运行时显式启用全屏布局。
+  containerNode.classList.toggle('is-compact-layout', compactLayout);
+  if (compactLayout) {
+    controlPanelNode.style.setProperty('top', '0px', 'important');
+    controlPanelNode.style.setProperty('left', '0px', 'important');
+    return;
+  }
+
   const panelWidth = $controlPanel.outerWidth() ?? 0;
   const panelHeight = $controlPanel.outerHeight() ?? 0;
   const initialX = safeLeft + Math.max(20, (viewWidth - panelWidth) / 2);
   const initialY = safeTop + Math.max(20, (viewHeight - panelHeight) / 2);
-  $controlPanel.css({ top: `${initialY}px`, left: `${initialX}px` });
+  controlPanelNode.style.setProperty('top', `${initialY}px`, 'important');
+  controlPanelNode.style.setProperty('left', `${initialX}px`, 'important');
+}
+
+function bindPanelViewportSync($container: JQuery<HTMLElement>) {
+  unregisterPanelViewportSync?.();
+  const ownerWindow = $container[0]?.ownerDocument.defaultView || window;
+  let frame: number | null = null;
+  const schedule = () => {
+    if (frame !== null) return;
+    frame = ownerWindow.requestAnimationFrame(() => {
+      frame = null;
+      if ($container[0]?.isConnected) prepareControlPanelLayout($container);
+    });
+  };
+  ownerWindow.addEventListener('resize', schedule);
+  ownerWindow.addEventListener('orientationchange', schedule);
+  ownerWindow.visualViewport?.addEventListener('resize', schedule);
+  ownerWindow.visualViewport?.addEventListener('scroll', schedule);
+  unregisterPanelViewportSync = () => {
+    if (frame !== null) ownerWindow.cancelAnimationFrame(frame);
+    frame = null;
+    ownerWindow.removeEventListener('resize', schedule);
+    ownerWindow.removeEventListener('orientationchange', schedule);
+    ownerWindow.visualViewport?.removeEventListener('resize', schedule);
+    ownerWindow.visualViewport?.removeEventListener('scroll', schedule);
+    unregisterPanelViewportSync = null;
+  };
 }
 
 async function createOrShowPanel(showPresetsFirst = false) {
@@ -264,6 +302,7 @@ async function createOrShowPanel(showPresetsFirst = false) {
     applyUiSkinToVisiblePanels();
     panel = $('#control-panel-container');
     prepareControlPanelLayout(panel);
+    if (!unregisterPanelViewportSync) bindPanelViewportSync(panel);
     panel.addClass('visible');
     hostEntryController?.setPanelOpen(true);
     if (showPresetsFirst) {
@@ -289,6 +328,7 @@ async function createOrShowPanel(showPresetsFirst = false) {
   }
   panel = $(panelHtml);
   $('body').append(panel);
+  bindPanelViewportSync(panel);
   containPanelTouchScroll(panel);
   panel.find('.control-panel').attr('data-ui-skin', resolveUiSkinByLoadedPresetName());
 
@@ -323,6 +363,7 @@ function hidePanel() {
     if (panel !== closingPanel || closingPanel.hasClass('visible')) return;
     closingPanel.remove();
     panel = null;
+    unregisterPanelViewportSync?.();
     styleTag?.remove();
     styleTag = null;
   }, 300);

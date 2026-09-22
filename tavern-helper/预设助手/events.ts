@@ -71,6 +71,7 @@ export function enablePanelDragging($targetPanel: JQuery<HTMLElement>) {
 
   const startDrag = (e: JQuery.TriggeredEvent) => {
     if ($(e.target).closest('button').length) return;
+    if ($targetPanel.closest('#control-panel-container.is-compact-layout').length) return;
 
     syncRuntimeSafeArea();
     isDragging = true;
