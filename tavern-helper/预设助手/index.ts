@@ -762,9 +762,8 @@ $(async () => {
       });
     },
   };
-  const entries = normalizePanelEntries();
   hostEntryController = registerHostEntries(entryDeps);
-  controlButtonController = registerControlButton(entryDeps, entries.quickReply);
+  controlButtonController = registerControlButton(entryDeps);
   unregisterNsfwStatus = onNsfwStatusChange(syncNsfwEntryIndicators);
   unregisterNsfwAutomation = registerNsfwAutomation({
     getSettings: () => activeSettings,

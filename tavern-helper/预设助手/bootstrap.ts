@@ -57,7 +57,7 @@ function getUnsubscribe(result: unknown): (() => void) | null {
   return null;
 }
 
-export function registerControlButton(deps: RegisterControlButtonDeps, enabled: boolean): ControlButtonController {
+export function registerControlButton(deps: RegisterControlButtonDeps): ControlButtonController {
   const hostDoc = (() => {
     try {
       return window.parent && window.parent !== window ? window.parent.document : document;
@@ -72,7 +72,9 @@ export function registerControlButton(deps: RegisterControlButtonDeps, enabled: 
   let dressFrame: number | null = null;
   let pending = Promise.resolve();
   let opening = false;
-  const handler = async () => {
+  let currentEnabled = false;
+  let ignoreApiEventUntil = 0;
+  const togglePanel = async () => {
     if (destroyed || opening) return;
     opening = true;
     try {
@@ -91,6 +93,34 @@ export function registerControlButton(deps: RegisterControlButtonDeps, enabled: 
     const title = compact(node.getAttribute('title'));
     const ariaLabel = compact(node.getAttribute('aria-label'));
     return [label, title, ariaLabel].some(value => value.includes('🌙预设助手'));
+  };
+  const toElement = (target: EventTarget | null | undefined) => {
+    if (!target) return null;
+    const candidate = target as Element;
+    return typeof candidate.matches === 'function' && typeof candidate.closest === 'function' ? candidate : null;
+  };
+  const findEntryButton = (event: Event) => {
+    const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+    for (const target of path) {
+      const element = toElement(target);
+      if (!element) continue;
+      const entry = element.matches(CONTROL_ENTRY_SELECTOR) ? element : element.closest(CONTROL_ENTRY_SELECTOR);
+      if (entry && isEntryButton(entry)) return entry;
+    }
+    const target = toElement(event.target);
+    if (!target) return null;
+    const entry = target.matches(CONTROL_ENTRY_SELECTOR) ? target : target.closest(CONTROL_ENTRY_SELECTOR);
+    return entry && isEntryButton(entry) ? entry : null;
+  };
+  const onHostClick = (event: Event) => {
+    if (!currentEnabled || !findEntryButton(event)) return;
+    // 酒馆通常还会为同一次 DOM 点击派发按钮自定义事件；短时间忽略它，避免面板打开后又被关闭。
+    ignoreApiEventUntil = Date.now() + 1000;
+    void togglePanel();
+  };
+  const onButtonEvent = () => {
+    if (!currentEnabled || Date.now() < ignoreApiEventUntil) return;
+    void togglePanel();
   };
   const dressEntries = () => {
     dressFrame = null;
@@ -120,6 +150,7 @@ export function registerControlButton(deps: RegisterControlButtonDeps, enabled: 
     observer.observe(hostDoc.documentElement, { childList: true, subtree: true });
   };
   const sync = (nextEnabled: boolean) => {
+    currentEnabled = nextEnabled;
     pending = pending
       .then(async () => {
         if (destroyed) return;
@@ -135,7 +166,7 @@ export function registerControlButton(deps: RegisterControlButtonDeps, enabled: 
         const eventName = api.getButtonEvent('🌙 预设助手');
         if (!eventName) throw new Error('无法获取快捷回复按钮事件');
         unsubscribe?.();
-        unsubscribe = getUnsubscribe(api.eventOn(eventName, handler));
+        unsubscribe = getUnsubscribe(api.eventOn(eventName, onButtonEvent));
         ensureIndicatorStyle();
         ensureObserver();
         scheduleDress();
@@ -145,7 +176,8 @@ export function registerControlButton(deps: RegisterControlButtonDeps, enabled: 
         if (!destroyed && nextEnabled) deps.onQuickReplyUnavailable?.();
       });
   };
-  sync(enabled);
+  // 捕获阶段直接监听宿主快速回复按钮，作为自定义按钮事件未转发时的可靠兜底。
+  hostDoc.addEventListener('click', onHostClick, true);
   return {
     sync,
     setNsfwActive(active) {
@@ -159,6 +191,7 @@ export function registerControlButton(deps: RegisterControlButtonDeps, enabled: 
       unsubscribe = null;
       observer?.disconnect();
       observer = null;
+      hostDoc.removeEventListener('click', onHostClick, true);
       if (dressFrame !== null) (hostDoc.defaultView || window).cancelAnimationFrame(dressFrame);
       dressFrame = null;
       hostDoc
