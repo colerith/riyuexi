@@ -2491,6 +2491,7 @@ export const panelCss = `
     .changelog-section { margin-top: 14px; padding-top: 2px; }
     .changelog-section + .changelog-section { border-top: 1px solid var(--panel-border); padding-top: 12px; }
     .changelog-section h2 { margin: 0 0 7px; color: var(--panel-text-accent); font-size: 1.04em; line-height: 1.45; }
+    .changelog-section h3 { margin: 13px 0 5px; color: var(--panel-text-highlight); font-size: .94em; line-height: 1.45; }
     .changelog-subtitle { margin: 14px 0 5px; padding-left: 9px; border-left: 3px solid var(--panel-text-accent); color: var(--panel-text-highlight); font-size: 0.96em; font-weight: 700; line-height: 1.45; }
     .changelog-section code { padding: 1px 5px; border: 1px solid var(--panel-border); border-radius: 5px; background: var(--panel-button-bg); color: var(--panel-text-accent); font-family: Consolas, monospace; }
     .changelog-section pre { margin: 10px 0 0; padding: 10px 12px; overflow-x: auto; border: 1px solid var(--panel-border); border-radius: 8px; background: rgba(0, 0, 0, 0.08); }
