@@ -165,7 +165,7 @@ export const panelHtml = `
                                     <li>点击酒馆顶栏从左往右第三个图标，进入“自动解析”：勾选<b>“自动解析”</b>与<b>“显示隐藏内容”</b>，前缀填写 <code>&lt;electric&gt;</code>，后缀填写 <code>&lt;/electric&gt;</code>。</li>
                                     <li>确保同一页面的<b>【高级格式化设置】</b>中，“以……开始回复”保持为空，不能填写任何内容。</li>
                                     <li>确保预设界面的<b>【续写预填充】</b>和<b>【请求思维链】</b>均未勾选。</li>
-                                    <li>如果聊天补全来源是<b>“自定义兼容 OpenAI”</b>，预设助手会在【API 链接配置】→【附加参数－排除主体参数】中自动填写下方内容；切换到其他模型或来源时会自动清空。连接 <b>Google AI Studio</b> 时不需要此项。</li>
+                                    <li>如果聊天补全来源是<b>“自定义兼容 OpenAI”</b>，预设助手会在【API 链接配置】→【附加参数－排除主体参数】中自动填写下方内容；切换到 Claude 时会保留你填写的内容，不再自动清空，其他不需要这些参数的模型或来源仍会自动清空。连接 <b>Google AI Studio</b> 时不需要此项。</li>
                                 </ol>
                                 <div class="help-code-block">- presence_penalty<br>- frequency_penalty<br>- top_p<br>- top_k<br>- temperature</div>
                                 <p class="help-note"><b>注意：</b>3.5 以后的Flash模型均无法自定义温度、频率和惩罚参数。</p>

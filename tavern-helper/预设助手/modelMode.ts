@@ -36,6 +36,9 @@ async function syncCustomExcludeBody(model: string) {
   const settings = SillyTavern.chatCompletionSettings;
   if (!settings) return;
 
+  // Claude 可能需要用户自行排除渠道不支持的主体参数，保留现有内容，不做自动写入或清空。
+  if (/claude/iu.test(model)) return;
+
   const isSupportedFlash = /gemini.*3[._-]?[5-8].*flash/iu.test(model);
   const isCustomChatCompletion = SillyTavern.mainApi === 'openai' && settings.chat_completion_source === 'custom';
   const desiredValue = isCustomChatCompletion && isSupportedFlash ? FLASH_CUSTOM_EXCLUDE_BODY : '';
