@@ -2894,12 +2894,15 @@ export const panelCss = `
    #control-panel-container .nsfw-worldbook-marker-field textarea { min-height: 58px !important; }
    #control-panel-container .nsfw-reset-keywords { width: 100%; margin-top: 12px; }
    #control-panel-container .nsfw-default-summary { margin: 9px 2px 0; }
-   /* 首页采用紧凑网格；高度由宿主可视区域限制，标题与返回入口始终可见。 */
+   /* 保持窄幅竖向比例；短屏只缩短可滚动内容区，不横向铺满。 */
    #control-panel-container > .control-panel {
        box-sizing: border-box;
-       width: min(560px, calc(var(--th-runtime-view-width) - 32px));
-       max-width: 560px;
-       height: min(580px, calc(var(--th-runtime-view-height) - 32px));
+       position: absolute;
+       border: 1px solid var(--panel-border);
+       border-radius: 16px;
+       width: min(460px, calc(var(--th-runtime-view-width) - 32px));
+       max-width: 460px;
+       height: min(640px, calc(var(--th-runtime-view-height) - 32px));
        max-height: calc(var(--th-runtime-view-height) - 32px);
        --th-home-footer-height: 28px;
    }
@@ -2911,6 +2914,7 @@ export const panelCss = `
        overflow: hidden;
    }
    #control-panel-container > .control-panel > .panel-footer {
+       display: block;
        box-sizing: border-box;
        height: var(--th-home-footer-height);
        padding: 4px 8px;
@@ -2929,12 +2933,15 @@ export const panelCss = `
    #control-panel-container .panel-content::-webkit-scrollbar { display: block !important; width: 5px !important; }
    #control-panel-container .panel-content::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 5px; }
    #control-panel-container.is-compact-layout > .control-panel { --th-home-footer-height: 0px; }
-   #control-panel-container .status-display { gap: 8px; margin-bottom: 12px; line-height: 1.4; }
-   #control-panel-container .status-length-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px; }
-   #control-panel-container .status-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-   #control-panel-container .status-item { min-width: 0; padding: 9px 10px; border-radius: 10px; }
+   #control-panel-container .panel-main > .panel-content { padding: 12px; }
+   #control-panel-container .status-display { gap: 7px; margin-bottom: 10px; line-height: 1.4; }
+   #control-panel-container .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+   #control-panel-container .status-item { min-width: 0; padding: 8px 10px; border-radius: 10px; }
+   #control-panel-container .status-item[data-target="aiMode"] { flex-direction: row; justify-content: space-between; align-items: center; gap: 12px; }
+   #control-panel-container .status-item[data-target="aiMode"] p { margin: 0 !important; }
    #control-panel-container .status-item :is(.status-label, .status-value) { padding-left: 5px; overflow-wrap: anywhere; }
-   #control-panel-container .status-item .status-value { line-height: 1.4; }
+   #control-panel-container .status-item .status-label { margin: 0; line-height: 1.25; }
+   #control-panel-container .status-item .status-value { margin-top: 3px !important; font-size: 1em; line-height: 1.35; }
    #control-panel-container .status-item.full-width { gap: 12px; }
    #control-panel-container .status-item.full-width .status-label { flex-shrink: 0; }
    #control-panel-container .status-item.full-width .status-value { text-align: right; }
@@ -2950,16 +2957,18 @@ export const panelCss = `
    #control-panel-container .nsfw-home-modes,
    #control-panel-container .nsfw-worldbook-status { grid-column: 1 / -1; padding-left: 5px; }
    #control-panel-container .nsfw-worldbook-status { overflow-wrap: anywhere; }
-   #control-panel-container .main-menu { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-   #control-panel-container .main-menu button { min-width: 0; min-height: 42px; padding: 9px 6px; font-size: .9em; }
+   #control-panel-container .nsfw-worldbook-details { grid-column: 1 / -1; min-width: 0; padding-left: 5px; color: var(--panel-text-value); font-size: .85em; }
+   #control-panel-container .nsfw-worldbook-details summary { cursor: pointer; padding: 4px 0; line-height: 1.4; }
+   #control-panel-container .nsfw-worldbook-details summary:focus-visible { outline: 2px solid var(--panel-text-accent); outline-offset: 2px; border-radius: 4px; }
+   #control-panel-container .nsfw-worldbook-details .nsfw-worldbook-status { padding: 3px 0 7px; font-size: .9em; }
+   #control-panel-container .nsfw-worldbook-details .nsfw-home-modes { padding-left: 0; }
+   #control-panel-container .main-menu { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+   #control-panel-container .main-menu button { min-width: 0; min-height: 36px; padding: 6px; font-size: .9em; }
    #control-panel-container .main-menu i { margin-right: 6px; }
    @media (max-width: 480px) {
-       #control-panel-container .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-       #control-panel-container .main-menu { grid-template-columns: repeat(2, minmax(0, 1fr)); }
        #control-panel-container .nsfw-home-modes button { min-height: 36px !important; }
    }
    @media (max-width: 360px) {
-       #control-panel-container .status-length-grid { grid-template-columns: minmax(0, 1fr); }
        #control-panel-container .status-item.full-width { flex-wrap: wrap; gap: 4px; }
    }
    @media (max-width: 480px) {

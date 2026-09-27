@@ -3629,6 +3629,8 @@ interface BindStatusItemDeps {
 export function bindStatusItemClickHandler(deps: BindStatusItemDeps) {
   const { panel } = deps;
   panel.on('click', '#status-display .status-item[data-action]', async (e: JQuery.ClickEvent) => {
+    // 世界书折叠区和快捷按钮有各自的操作，不应打开预设编辑器。
+    if ($(e.target).closest('details, button').length) return;
     const item = $(e.currentTarget);
     const presetId = item.data('preset-id');
     const target = item.data('target');

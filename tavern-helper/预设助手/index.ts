@@ -243,7 +243,7 @@ function prepareControlPanelLayout($container: JQuery<HTMLElement>) {
   const safeLeft = Math.max(0, Math.round(viewport?.offsetLeft || 0));
   const safeRight = Math.max(0, Math.round((hostWindow.innerWidth || 0) - viewWidth - safeLeft));
   const safeBottom = Math.max(0, Math.round((hostWindow.innerHeight || 0) - viewHeight - safeTop));
-  const compactLayout = viewWidth <= 768 || viewHeight <= 620 || (viewWidth <= 900 && viewHeight > viewWidth);
+  const compactLayout = viewWidth <= 768 || (viewWidth <= 900 && viewHeight > viewWidth);
 
   [containerNode, controlPanelNode].forEach(node => {
     node.style.setProperty('--th-runtime-safe-top', `${safeTop}px`);
@@ -264,8 +264,8 @@ function prepareControlPanelLayout($container: JQuery<HTMLElement>) {
 
   const panelWidth = $controlPanel.outerWidth() ?? 0;
   const panelHeight = $controlPanel.outerHeight() ?? 0;
-  const initialX = safeLeft + Math.max(20, (viewWidth - panelWidth) / 2);
-  const initialY = safeTop + Math.max(20, (viewHeight - panelHeight) / 2);
+  const initialX = safeLeft + Math.max(16, (viewWidth - panelWidth) / 2);
+  const initialY = safeTop + Math.max(16, (viewHeight - panelHeight) / 2);
   controlPanelNode.style.setProperty('top', `${initialY}px`, 'important');
   controlPanelNode.style.setProperty('left', `${initialX}px`, 'important');
 }
