@@ -2894,6 +2894,74 @@ export const panelCss = `
    #control-panel-container .nsfw-worldbook-marker-field textarea { min-height: 58px !important; }
    #control-panel-container .nsfw-reset-keywords { width: 100%; margin-top: 12px; }
    #control-panel-container .nsfw-default-summary { margin: 9px 2px 0; }
+   /* 首页采用紧凑网格；高度由宿主可视区域限制，标题与返回入口始终可见。 */
+   #control-panel-container > .control-panel {
+       box-sizing: border-box;
+       width: min(560px, calc(var(--th-runtime-view-width) - 32px));
+       max-width: 560px;
+       height: min(580px, calc(var(--th-runtime-view-height) - 32px));
+       max-height: calc(var(--th-runtime-view-height) - 32px);
+       --th-home-footer-height: 28px;
+   }
+   #control-panel-container > .control-panel > :is(.panel-main, .panel-child) {
+       height: calc(100% - var(--th-home-footer-height)) !important;
+       min-height: 0;
+       display: grid;
+       grid-template-rows: auto minmax(0, 1fr);
+       overflow: hidden;
+   }
+   #control-panel-container > .control-panel > .panel-footer {
+       box-sizing: border-box;
+       height: var(--th-home-footer-height);
+       padding: 4px 8px;
+       line-height: 19px;
+   }
+   #control-panel-container .panel-main > .panel-content,
+   #control-panel-container .panel-child > .panel-content {
+       height: auto !important;
+       min-height: 0;
+       overflow-y: auto;
+       overflow-x: hidden;
+       overscroll-behavior-y: contain;
+       scrollbar-width: thin !important;
+       scrollbar-color: var(--panel-text-value) transparent;
+   }
+   #control-panel-container .panel-content::-webkit-scrollbar { display: block !important; width: 5px !important; }
+   #control-panel-container .panel-content::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 5px; }
+   #control-panel-container.is-compact-layout > .control-panel { --th-home-footer-height: 0px; }
+   #control-panel-container .status-display { gap: 8px; margin-bottom: 12px; line-height: 1.4; }
+   #control-panel-container .status-length-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px; }
+   #control-panel-container .status-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+   #control-panel-container .status-item { min-width: 0; padding: 9px 10px; border-radius: 10px; }
+   #control-panel-container .status-item :is(.status-label, .status-value) { padding-left: 5px; overflow-wrap: anywhere; }
+   #control-panel-container .status-item .status-value { line-height: 1.4; }
+   #control-panel-container .status-item.full-width { gap: 12px; }
+   #control-panel-container .status-item.full-width .status-label { flex-shrink: 0; }
+   #control-panel-container .status-item.full-width .status-value { text-align: right; }
+   #control-panel-container .nsfw-status-item {
+       display: grid;
+       grid-template-columns: auto minmax(0, 1fr);
+       align-items: center;
+       column-gap: 12px;
+       row-gap: 6px;
+   }
+   #control-panel-container .nsfw-status-item > .status-label { margin: 0; }
+   #control-panel-container .nsfw-status-item > .status-value { margin: 0 !important; justify-self: end; }
+   #control-panel-container .nsfw-home-modes,
+   #control-panel-container .nsfw-worldbook-status { grid-column: 1 / -1; padding-left: 5px; }
+   #control-panel-container .nsfw-worldbook-status { overflow-wrap: anywhere; }
+   #control-panel-container .main-menu { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+   #control-panel-container .main-menu button { min-width: 0; min-height: 42px; padding: 9px 6px; font-size: .9em; }
+   #control-panel-container .main-menu i { margin-right: 6px; }
+   @media (max-width: 480px) {
+       #control-panel-container .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+       #control-panel-container .main-menu { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+       #control-panel-container .nsfw-home-modes button { min-height: 36px !important; }
+   }
+   @media (max-width: 360px) {
+       #control-panel-container .status-length-grid { grid-template-columns: minmax(0, 1fr); }
+       #control-panel-container .status-item.full-width { flex-wrap: wrap; gap: 4px; }
+   }
    @media (max-width: 480px) {
        #control-panel-container .preset-options .length-definition-row {
            grid-template-columns: 48px minmax(0, 1fr) minmax(0, 1fr) !important;
