@@ -2927,16 +2927,14 @@ export const panelCss = `
        overflow-y: auto;
        overflow-x: hidden;
        overscroll-behavior-y: contain;
-       scrollbar-width: thin !important;
-       scrollbar-color: var(--panel-text-value) transparent;
+       scrollbar-width: none !important;
    }
-   #control-panel-container .panel-content::-webkit-scrollbar { display: block !important; width: 5px !important; }
-   #control-panel-container .panel-content::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 5px; }
+   #control-panel-container .panel-content::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
    #control-panel-container.is-compact-layout > .control-panel { --th-home-footer-height: 0px; }
-   #control-panel-container .panel-main > .panel-content { padding: 12px; }
-   #control-panel-container .status-display { gap: 7px; margin-bottom: 10px; line-height: 1.4; }
-   #control-panel-container .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-   #control-panel-container .status-item { min-width: 0; padding: 8px 10px; border-radius: 10px; }
+   #control-panel-container .panel-main > .panel-content { padding: 16px calc(16px + var(--th-panel-safe-right)) calc(18px + var(--th-panel-safe-bottom)) calc(16px + var(--th-panel-safe-left)); }
+   #control-panel-container .status-display { gap: 10px; margin-bottom: 18px; line-height: 1.4; }
+   #control-panel-container .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+   #control-panel-container .status-item { min-width: 0; padding: 11px 12px; border-radius: 10px; }
    #control-panel-container .status-item[data-target="aiMode"] { flex-direction: row; justify-content: space-between; align-items: center; gap: 12px; }
    #control-panel-container .status-item[data-target="aiMode"] p { margin: 0 !important; }
    #control-panel-container .status-item :is(.status-label, .status-value) { padding-left: 5px; overflow-wrap: anywhere; }
@@ -2950,7 +2948,7 @@ export const panelCss = `
        grid-template-columns: auto minmax(0, 1fr);
        align-items: center;
        column-gap: 12px;
-       row-gap: 6px;
+       row-gap: 9px;
    }
    #control-panel-container .nsfw-status-item > .status-label { margin: 0; }
    #control-panel-container .nsfw-status-item > .status-value { margin: 0 !important; justify-self: end; }
@@ -2962,9 +2960,23 @@ export const panelCss = `
    #control-panel-container .nsfw-worldbook-details summary:focus-visible { outline: 2px solid var(--panel-text-accent); outline-offset: 2px; border-radius: 4px; }
    #control-panel-container .nsfw-worldbook-details .nsfw-worldbook-status { padding: 3px 0 7px; font-size: .9em; }
    #control-panel-container .nsfw-worldbook-details .nsfw-home-modes { padding-left: 0; }
-   #control-panel-container .main-menu { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-   #control-panel-container .main-menu button { min-width: 0; min-height: 36px; padding: 6px; font-size: .9em; }
+   #control-panel-container .main-menu { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+   #control-panel-container .main-menu button { min-width: 0; min-height: 40px; padding: 8px; font-size: .9em; }
    #control-panel-container .main-menu i { margin-right: 6px; }
+   /* 覆盖宿主隔离规则的 font: inherit，保持辅助操作小于条目标题。 */
+   #control-panel-container .quick-switch-actions .quick-switch-sub-btn {
+       flex: 0 0 auto;
+       min-height: 28px;
+       margin: 0;
+       padding: 4px 11px;
+       border-radius: 8px;
+       font-size: 12px !important;
+       font-weight: 500 !important;
+       line-height: 1.4 !important;
+       white-space: nowrap;
+       box-shadow: none;
+   }
+   #control-panel-container .quick-switch-sub-btn:focus-visible { outline: 2px solid var(--panel-text-accent); outline-offset: 3px; }
    @media (max-width: 480px) {
        #control-panel-container .nsfw-home-modes button { min-height: 36px !important; }
    }
