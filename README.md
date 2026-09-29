@@ -2,16 +2,16 @@
 
 ## 预设助手
 
-当前版本：`0.41.12`
+当前版本：`0.41.13`
 
 酒馆助手在线导入：
 
 ```js
-import "https://cdn.jsdelivr.net/gh/colerith/riyuexi@v0.41.12/file/index-0.41.12.js";
+import "https://cdn.jsdelivr.net/gh/colerith/riyuexi@v0.41.13/file/index-0.41.13.js";
 ```
 
-- `file/index-0.41.12.js`：生产构建，按版本保留，不覆盖旧文件。
-- `tavern-helper/预设助手/`：对应版本的完整源码。
-- `tavern-helper/发布流程.md`：后续版本打包与推送步骤。
+- `file/index-0.41.13.js`：生产构建，按版本保留，不覆盖旧文件。
+- `tavern-helper/预设助手/`：对应版本的源码；共享滚动隔离依赖见根目录 `overlay.ts`。
+- `tavern-helper/预设助手/发布流程.md`：后续版本打包与推送步骤。
 
 仓库原有的 `ads_v4.json` 与预设助手发布相互独立。

@@ -1,4 +1,5 @@
-﻿import type { QuickSwitchPromptGroupConfig } from './types';
+import { containOverlayScroll } from '../../overlay';
+import type { QuickSwitchPromptGroupConfig } from './types';
 
 import { combineDisplayRules, resolveBaiBaiGroupRules } from './presetGroups';
 import { applyStartReplyWith } from './modelMode';
@@ -308,6 +309,7 @@ function mountDialogWithThemeAndDrag(
   }
 
   $dialogPanel.css('visibility', 'hidden');
+  containOverlayScroll($dialog[0]);
   $('body').append($dialog);
   logDialogLayout('mount:after-append', $dialogPanel, { panelSelector }, forceDebugLog);
   centerFloatingDialog($dialogPanel);

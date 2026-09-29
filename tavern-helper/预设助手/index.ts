@@ -237,11 +237,12 @@ function prepareControlPanelLayout($container: JQuery<HTMLElement>) {
 
   const hostWindow = containerNode.ownerDocument.defaultView || window;
   const viewport = hostWindow.visualViewport;
-  const viewWidth = viewport?.width || hostWindow.innerWidth || 0;
+  const layoutWidth = containerNode.ownerDocument.documentElement.clientWidth || hostWindow.innerWidth;
+  const viewWidth = Math.min(viewport?.width || layoutWidth, layoutWidth);
   const viewHeight = viewport?.height || hostWindow.innerHeight || 0;
   const safeTop = Math.max(0, Math.round(viewport?.offsetTop || 0));
   const safeLeft = Math.max(0, Math.round(viewport?.offsetLeft || 0));
-  const safeRight = Math.max(0, Math.round((hostWindow.innerWidth || 0) - viewWidth - safeLeft));
+  const safeRight = Math.max(0, Math.round(layoutWidth - viewWidth - safeLeft));
   const safeBottom = Math.max(0, Math.round((hostWindow.innerHeight || 0) - viewHeight - safeTop));
   const compactLayout = viewWidth <= 768 || (viewWidth <= 900 && viewHeight > viewWidth);
 

@@ -1,3 +1,4 @@
+import { containOverlayScroll } from '../../overlay';
 import { getLatestChangelog, renderChangelogEntries, type ChangelogEntry } from './changelog';
 import { defaultCommands } from './constants';
 import { DEFAULT_NSFW_SETTINGS, getNsfwRuntimeStatus, normalizeNsfwSettings } from './nsfw';
@@ -16,41 +17,7 @@ function escapeHtml(value: unknown) {
 
 export function containPanelTouchScroll($root: JQuery<HTMLElement>) {
   const root = $root[0];
-  if (!root || root.dataset.touchScrollContained === 'true') return;
-  root.dataset.touchScrollContained = 'true';
-
-  let scrollArea: HTMLElement | null = null;
-  let previousY = 0;
-  root.addEventListener(
-    'touchstart',
-    event => {
-      // 面板挂载在宿主页面，不能用当前 iframe 的 Element 做 instanceof 判断。
-      const target = event.target as (EventTarget & { closest?: (selector: string) => Element | null }) | null;
-      scrollArea = (target?.closest?.('.panel-content') as HTMLElement | null) || null;
-      previousY = event.touches[0]?.clientY ?? 0;
-    },
-    { passive: true },
-  );
-  root.addEventListener(
-    'touchmove',
-    event => {
-      const currentY = event.touches[0]?.clientY ?? previousY;
-      const deltaY = previousY - currentY;
-      previousY = currentY;
-
-      if (!scrollArea) {
-        event.preventDefault();
-        return;
-      }
-
-      const maxScrollTop = Math.max(0, scrollArea.scrollHeight - scrollArea.clientHeight);
-      const reachedTop = scrollArea.scrollTop <= 0 && deltaY < 0;
-      const reachedBottom = scrollArea.scrollTop >= maxScrollTop - 1 && deltaY > 0;
-      if (maxScrollTop <= 1 || reachedTop || reachedBottom) event.preventDefault();
-      event.stopPropagation();
-    },
-    { passive: false },
-  );
+  if (root) containOverlayScroll(root);
 }
 
 function inferQuickSwitchEnabledFromPrompts(

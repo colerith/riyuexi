@@ -526,7 +526,7 @@ export const panelCss = `
         --th-runtime-safe-right: 0px;
         --th-runtime-safe-bottom: 0px;
         --th-runtime-safe-left: 0px;
-        --th-runtime-view-width: 100vw;
+        --th-runtime-view-width: 100%;
         --th-runtime-view-height: 100vh;
         --th-panel-safe-top: max(env(safe-area-inset-top, 0px), var(--th-runtime-safe-top));
         --th-panel-safe-right: max(env(safe-area-inset-right, 0px), var(--th-runtime-safe-right));
@@ -535,7 +535,7 @@ export const panelCss = `
         --th-panel-header-height: calc(50px + var(--th-panel-safe-top));
     }
     #control-panel-container, #qr-welcome-popup {
-        position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; height: 100dvh !important; background-color: var(--panel-overlay-bg);
+        position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; width: auto !important; height: 100vh !important; height: 100dvh !important; background-color: var(--panel-overlay-bg);
         z-index: 2147483000 !important; opacity: 0; transition: opacity 0.3s ease;
         isolation: isolate; overflow: hidden; overscroll-behavior: none; pointer-events: none; font-family: var(--font-main); color: var(--panel-text-main);
     }
@@ -591,7 +591,7 @@ export const panelCss = `
             position: fixed;
             top: 0 !important;
             left: 0 !important;
-            width: 100vw;
+            width: 100%;
             max-width: none;
             height: 100dvh;
             border-radius: 0;
@@ -659,7 +659,7 @@ export const panelCss = `
             top: 0 !important;
             left: 0 !important;
             transform: none !important;
-            width: 100vw;
+            width: 100%;
             max-width: none;
             height: 100dvh;
             max-height: none;
@@ -1163,6 +1163,9 @@ export const panelCss = `
     .custom-quick-request-overlay {
         position: fixed;
         inset: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+        overscroll-behavior: none;
         z-index: 2147483020;
         display: flex;
         align-items: center;
@@ -1398,6 +1401,9 @@ export const panelCss = `
     .qs-builder-overlay {
         position: fixed;
         inset: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+        overscroll-behavior: none;
         z-index: 2147483010;
         background: rgba(4, 8, 14, 0.46);
         display: flex;
@@ -2562,7 +2568,7 @@ export const panelCss = `
     .changelog-panel.dark-mode .changelog-confirm.is-dismiss { background: rgba(188, 207, 235, 0.16); border-color: rgba(188, 207, 235, 0.4); color: #f2f7ff !important; }
     .changelog-panel.dark-mode .changelog-confirm:disabled { color: #e4edfa !important; opacity: 0.58; }
     @media (max-width: 768px), (max-height: 620px) {
-        #qr-welcome-popup .changelog-panel { width: 100vw; max-width: none; height: 100dvh; max-height: 100dvh; }
+        #qr-welcome-popup .changelog-panel { width: 100%; max-width: none; height: 100dvh; max-height: 100dvh; }
         #qr-welcome-popup .changelog-content { height: auto !important; }
     }
     @media (max-width: 480px) {
