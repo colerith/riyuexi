@@ -588,7 +588,7 @@ export async function renderStatusDisplay(deps: RenderStatusDisplayDeps) {
     activePresetId = storage.bindings[charId];
   }
 
-  const presetInfoHtml = `<div class="status-item full-width" data-action="edit_status_preset" data-preset-id="${activePresetId}" data-target="preset"><p class="status-label">当前生效预设 ${isGlobal ? '(全局)' : '(绑定)'}</p><p class="status-value">${presetName}</p></div>`;
+  const presetInfoHtml = `<div class="status-item" data-action="edit_status_preset" data-preset-id="${activePresetId}" data-target="preset"><p class="status-label">当前生效预设 ${isGlobal ? '(全局)' : '(绑定)'}</p><p class="status-value">${presetName}</p></div>`;
 
   const presetStatus = `
        <div class="status-item" data-action="edit_status_setting" data-preset-id="${activePresetId}" data-target="perspective"><p class="status-label">视角</p><p class="status-value">${perspectiveMap[activeSettings.perspective]}</p></div>
@@ -598,9 +598,11 @@ export async function renderStatusDisplay(deps: RenderStatusDisplayDeps) {
 
   const worldbookExpanded = panel.find('.nsfw-worldbook-details').prop('open') === true;
   const statusHtml = `
-       ${presetInfoHtml}
-       <div class="status-item" data-action="edit_status_setting" data-preset-id="${activePresetId}" data-target="wordCount"><p class="status-label">字数</p><p class="status-value">${wcString}</p></div>
+       <div class="status-grid">
+         ${presetInfoHtml}
        <div class="status-item" data-action="edit_status_setting" data-preset-id="${activePresetId}" data-target="aiMode"><p class="status-label">AI模式</p><p class="status-value">${modeMap[activeSettings.aiMode] || '未知'}</p></div>
+       </div>
+       <div class="status-item" data-action="edit_status_setting" data-preset-id="${activePresetId}" data-target="wordCount"><p class="status-label">字数</p><p class="status-value">${wcString}</p></div>
        <div class="status-item nsfw-status-item ${nsfwStatus.active ? 'is-active' : ''}" data-action="edit_status_setting" data-preset-id="${activePresetId}" data-target="nsfw" title="${escapeHtml(`${nsfwStatus.note}；${nsfwWorldbookState}${nsfwWorldbookLast}`)}"><p class="status-label">NSFW</p><p class="status-value"><i class="nsfw-state-dot"></i>${nsfwValue}</p><div class="nsfw-home-modes" role="group" aria-label="NSFW 模式">${nsfwHomeModes.map(([mode, label]) => `<button type="button" class="${nsfwHomeMode === mode ? 'active' : ''}" data-nsfw-home-mode="${mode}">${label}</button>`).join('')}</div><details class="nsfw-worldbook-details" ${worldbookExpanded ? 'open' : ''}><summary>世界书联动 · ${nsfwWorldbookModeMap[nsfwSettings.worldbookMode]}</summary><p class="nsfw-worldbook-status">世界书：${nsfwWorldbookModeMap[nsfwSettings.worldbookMode]} · ${escapeHtml(`${nsfwWorldbookState}${nsfwWorldbookLast}`)}</p><div class="nsfw-home-modes nsfw-worldbook-modes" role="group" aria-label="NSFW 世界书联动">${nsfwWorldbookModes.map(([mode, label]) => `<button type="button" class="${nsfwSettings.worldbookMode === mode ? 'active' : ''}" data-nsfw-home-worldbook="${mode}">${label}</button>`).join('')}</div></details></div>
        <div class="status-grid">${presetStatus}</div>
    `;

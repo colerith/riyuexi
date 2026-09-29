@@ -1163,7 +1163,7 @@ export const panelCss = `
     .custom-quick-request-overlay {
         position: fixed;
         inset: 0;
-        z-index: 10050;
+        z-index: 2147483020;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1398,7 +1398,7 @@ export const panelCss = `
     .qs-builder-overlay {
         position: fixed;
         inset: 0;
-        z-index: 10030;
+        z-index: 2147483010;
         background: rgba(4, 8, 14, 0.46);
         display: flex;
         align-items: center;
@@ -2935,8 +2935,6 @@ export const panelCss = `
    #control-panel-container .status-display { gap: 10px; margin-bottom: 18px; line-height: 1.4; }
    #control-panel-container .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
    #control-panel-container .status-item { min-width: 0; padding: 11px 12px; border-radius: 10px; }
-   #control-panel-container .status-item[data-target="aiMode"] { flex-direction: row; justify-content: space-between; align-items: center; gap: 12px; }
-   #control-panel-container .status-item[data-target="aiMode"] p { margin: 0 !important; }
    #control-panel-container .status-item :is(.status-label, .status-value) { padding-left: 5px; overflow-wrap: anywhere; }
    #control-panel-container .status-item .status-label { margin: 0; line-height: 1.25; }
    #control-panel-container .status-item .status-value { margin-top: 3px !important; font-size: 1em; line-height: 1.35; }
