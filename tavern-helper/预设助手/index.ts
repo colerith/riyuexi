@@ -86,7 +86,6 @@ let tempThinkingStyle: 'conventional' | 'minimalist' | null = null;
 // ============================================================
 let panel: JQuery<HTMLElement> | null = null;
 let styleTag: JQuery<HTMLElement> | null = null;
-let faLink: JQuery<HTMLElement> | null = null;
 let controlButtonController: ControlButtonController | null = null;
 let hostEntryController: HostEntryController | null = null;
 let unregisterAutoSwitch: (() => void) | null = null;
@@ -314,12 +313,7 @@ async function createOrShowPanel(showPresetsFirst = false) {
     return;
   }
   await loadStorage(); // Reload storage when opening
-  if (!$('link[href*="fontawesome"]').length) {
-    faLink = $(
-      '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">',
-    );
-    $('head').append(faLink);
-  }
+  // 复用酒馆自带图标。追加全局图标样式会覆盖 .mes_ghost 等宿主显示规则。
   const $existingStyle = $('#control-panel-style');
   if ($existingStyle.length) {
     $existingStyle.html(panelCss);
@@ -660,13 +654,6 @@ async function initializeScript() {
     });
     saveStorage();
     refreshActiveSettings();
-  }
-
-  if (!$('link[href*="fontawesome"]').length) {
-    faLink = $(
-      '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">',
-    );
-    $('head').append(faLink);
   }
 
   refreshActiveSettings();
