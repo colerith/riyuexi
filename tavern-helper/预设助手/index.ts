@@ -1,3 +1,4 @@
+import { createPromptStateWriter } from './presetWrite';
 import { handleQuickRequest, quickRequestActions, summaryActions } from './actions';
 import { injectSettingsToAI } from './ai';
 import {
@@ -125,7 +126,7 @@ function applyUiSkinToVisiblePanels() {
 
 async function syncModelMode() {
   // 设置保存会再次触发 SETTINGS_UPDATED；正在同步时直接忽略，避免事件链互相等待。
-  if (modelModeSyncPromise) return;
+  if (modelModeSyncPromise || promptStateWriter.isWriting()) return;
   modelModeSyncPromise = (async () => {
     const storageChanged = await syncModelLinkedQuickSwitch({
       schemes: BUILTIN_QUICK_SWITCH_SCHEMES,
@@ -140,6 +141,14 @@ async function syncModelMode() {
   });
   await modelModeSyncPromise;
 }
+const promptStateWriter = createPromptStateWriter({
+  getPreset: name => getPreset(name),
+  getLoadedPresetName: () => getLoadedPresetName(),
+  getCharacterId: () => getCharacterId(),
+  setPreset: (name, patch) => setPreset(name, patch),
+});
+const updatePresetWith = promptStateWriter.update;
+
 let editingPresetId: string | null = null;
 
 async function openTutorial() {
@@ -572,7 +581,6 @@ function bindPanelEvents() {
     updatePresetWith,
     getLoadedPresetName,
     getPreset,
-    setPreset,
     getActivePresetId,
     captureRulesFromEnabledPrompts,
     capturePromptStatesByRules,
@@ -722,6 +730,7 @@ async function syncCharacterQuickSwitches() {
 }
 
 async function handleChatChanged() {
+  promptStateWriter.invalidate();
   console.log('预设助手 [AutoSwitch]: Chat changed, refreshing settings.');
   await loadStorage();
   await syncCharacterQuickSwitches();
@@ -743,6 +752,7 @@ async function handleChatChanged() {
 }
 
 async function handlePresetChanged() {
+  if (promptStateWriter.isWriting()) return;
   if (
     await ensureReasoningFormatting({
       configuredVersion: storage.reasoningFormattingVersion,
@@ -804,6 +814,7 @@ $(async () => {
     onChatChanged: handleChatChanged,
     onSettingsUpdated: syncModelMode,
     onPresetChanged: handlePresetChanged,
+    onPresetChanging: promptStateWriter.invalidate,
   });
 
   void initializeOptionalFeatures();

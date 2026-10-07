@@ -57,13 +57,9 @@ export async function applyThinkingMode(
   try {
     await deps.updatePresetWith('in_use', updateLogic);
 
-    const loadedPresetName = deps.getLoadedPresetName();
-    if (loadedPresetName) {
-      await deps.updatePresetWith(loadedPresetName, updateLogic);
-    }
-
     console.log(`预设助手: 思维模式已更新(Preset) - ${mode} ${style || ''}`);
   } catch (e) {
     console.warn('预设助手: 更新预设思维条目失败', e);
+    throw e;
   }
 }

@@ -3696,7 +3696,6 @@ interface BindGeneralActionsDeps {
   updatePresetWith: (name: string, updater: (preset: Preset) => Preset) => Promise<Preset>;
   getLoadedPresetName: () => string | null;
   getPreset: (name: string) => Preset;
-  setPreset: (name: string, preset: Preset) => Promise<Preset>;
   getActivePresetId: () => string;
   captureRulesFromEnabledPrompts: (prompts: PresetPrompt[]) => any[];
   capturePromptStatesByRules: (prompts: PresetPrompt[], rules: any[]) => { [promptId: string]: boolean };
@@ -5105,38 +5104,22 @@ export function bindGeneralActionHandler(deps: BindGeneralActionsDeps) {
         if (isEditingActive) {
           deps.refreshActiveSettings();
           await deps.injectSettingsToAI(deps.activeSettings);
-          const stagedPrompts = deps.getStagedPrompts();
-          if (stagedPrompts) {
-            try {
-              const presetToSave = deps.getPreset('in_use');
-              presetToSave.prompts = stagedPrompts;
-              deps.setStagedPrompts(null);
-              const presetName = deps.getLoadedPresetName();
-              if (presetName) await deps.setPreset(presetName, presetToSave);
-              await deps.setPreset('in_use', presetToSave);
-              await deps.applyEnvironmentPromptToggles({
-                updatePresetWith: deps.updatePresetWith,
-                getLoadedPresetName: deps.getLoadedPresetName,
-              });
-            } catch (err) {
-              console.error('预设助手: Failed to apply staged prompts', err);
-            }
-          } else {
-            const isSpecial = ['dialogue', 'outline', 'summary'].includes(deps.activeSettings.aiMode);
-            await deps.applyThinkingMode(isSpecial ? 'special' : 'conventional', deps.activeSettings.thinkingStyle, {
-              updatePresetWith: deps.updatePresetWith,
-              getLoadedPresetName: deps.getLoadedPresetName,
-            });
-            await deps.applyEnvironmentPromptToggles({
-              updatePresetWith: deps.updatePresetWith,
-              getLoadedPresetName: deps.getLoadedPresetName,
-            });
-          }
+          // 只在最新条目上应用所选模式，不写回编辑面板打开时的整份快照。
+          const isSpecial = ['dialogue', 'outline', 'summary'].includes(deps.activeSettings.aiMode);
+          await deps.applyThinkingMode(isSpecial ? 'special' : 'conventional', deps.activeSettings.thinkingStyle, {
+            updatePresetWith: deps.updatePresetWith,
+            getLoadedPresetName: deps.getLoadedPresetName,
+          });
+          deps.setStagedPrompts(null);
+          await deps.applyEnvironmentPromptToggles({
+            updatePresetWith: deps.updatePresetWith,
+            getLoadedPresetName: deps.getLoadedPresetName,
+          });
           await deps.applyNsfwSettings(deps.activeSettings);
           deps.triggerRenderStatusDisplay();
           deps.triggerRenderQuickSwitchPanel();
         }
-        toastr.success('预设已保存并应用。');
+        toastr.success('助手配置已保存并应用；条目开关如需长期保留，请在酒馆中保存预设。');
         panel.find('.control-panel').removeClass('show-editor');
         deps.triggerRenderPresetsList();
         break;

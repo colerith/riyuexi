@@ -221,17 +221,7 @@ async function setNsfwPromptEnabled(enabled: boolean, deps: NsfwPresetDeps, note
     return preset;
   };
 
-  const loadedPresetName = deps.getLoadedPresetName();
   if (hasTargetStateDiff(inUse, enabled)) await deps.updatePresetWith('in_use', updater);
-
-  if (loadedPresetName) {
-    try {
-      const loaded = getPreset(loadedPresetName);
-      if (hasTargetStateDiff(loaded, enabled)) await deps.updatePresetWith(loadedPresetName, updater);
-    } catch (error) {
-      console.warn(`预设助手[NSFW]: 写回预设“${loadedPresetName}”失败`, error);
-    }
-  }
 
   lastApplied = enabled;
   publishStatus({

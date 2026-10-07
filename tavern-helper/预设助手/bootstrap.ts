@@ -564,6 +564,7 @@ interface RegisterAutoSwitchDeps {
   onChatChanged: () => Promise<void>;
   onSettingsUpdated?: () => Promise<void>;
   onPresetChanged?: () => Promise<void>;
+  onPresetChanging?: () => void;
 }
 
 export function registerAutoSwitch(deps: RegisterAutoSwitchDeps) {
@@ -577,6 +578,7 @@ export function registerAutoSwitch(deps: RegisterAutoSwitchDeps) {
     if (stop) unsubscribers.push(stop);
   };
   if (tavern_events) {
+    if (deps.onPresetChanging) subscribe(tavern_events.OAI_PRESET_CHANGED_BEFORE, deps.onPresetChanging);
     subscribe(tavern_events.CHAT_CHANGED, deps.onChatChanged);
     if (deps.onSettingsUpdated) {
       const modelLinkedEvents = [
@@ -598,6 +600,7 @@ export function registerAutoSwitch(deps: RegisterAutoSwitchDeps) {
   // 兼容未转发预设事件的宿主；等酒馆完成下拉框的 change 处理后再同步。
   let presetTimer: ReturnType<typeof setTimeout> | undefined;
   $('body').on('change.qrPresetSync', '#settings_preset_openai', () => {
+    deps.onPresetChanging?.();
     clearTimeout(presetTimer);
     presetTimer = setTimeout(() => {
       void deps.onPresetChanged?.().catch(console.error);

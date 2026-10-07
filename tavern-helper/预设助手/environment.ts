@@ -152,25 +152,14 @@ export async function applyEnvironmentPromptToggles(deps: EnvironmentPromptDeps)
   };
 
   let shouldUpdateInUse = false;
-  let shouldUpdateLoadedPreset = false;
-
   try {
-    const presetInUse = getPreset('in_use');
-    shouldUpdateInUse = hasPromptToggleDiffByNameIncludes(presetInUse, 'MVU变量', shouldEnableMvuPrompt);
-
-    if (loadedPresetName) {
-      const loadedPreset = getPreset(loadedPresetName);
-      shouldUpdateLoadedPreset = hasPromptToggleDiffByNameIncludes(loadedPreset, 'MVU变量', shouldEnableMvuPrompt);
-    }
+    shouldUpdateInUse = hasPromptToggleDiffByNameIncludes(getPreset('in_use'), 'MVU变量', shouldEnableMvuPrompt);
   } catch (error) {
-    console.warn(`${LOG_PREFIX} 读取预设状态失败，回退到直接写回策略`, error);
-    shouldUpdateInUse = true;
-    shouldUpdateLoadedPreset = !!loadedPresetName;
+    console.warn(`${LOG_PREFIX} 读取失败，取消写入以保护预设`, error);
+    return;
   }
-
-  if (!shouldUpdateInUse && !shouldUpdateLoadedPreset) {
+  if (!shouldUpdateInUse) {
     lastAppliedSignature = signature;
-    debugLog(`${LOG_PREFIX} 跳过写回：目标状态已一致`);
     return;
   }
 
@@ -180,13 +169,8 @@ export async function applyEnvironmentPromptToggles(deps: EnvironmentPromptDeps)
     if (shouldUpdateInUse) {
       await deps.updatePresetWith('in_use', updater);
     }
-    if (loadedPresetName && shouldUpdateLoadedPreset) {
-      await deps.updatePresetWith(loadedPresetName, updater);
-    }
     lastAppliedSignature = signature;
-    debugLog(
-      `${LOG_PREFIX} 已完成环境联动写回：${shouldUpdateInUse ? 'in_use' : 'skip in_use'} + ${loadedPresetName || '无已加载预设'}(${shouldUpdateLoadedPreset ? 'updated' : 'skip'})`,
-    );
+    debugLog(`${LOG_PREFIX} 已更新当前使用状态，未写入预设文件`);
   } finally {
     isApplyingEnvironmentToggles = false;
   }

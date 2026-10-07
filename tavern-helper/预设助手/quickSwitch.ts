@@ -16,16 +16,22 @@ export async function deactivateUnboundQuickSwitchProfiles(
     const ids = profile.characterIds ?? (profile.characterId ? [profile.characterId] : []);
     return profile.scope === 'character' && !ids.map(String).includes(characterId);
   });
-  const rules = unboundProfiles.flatMap(profile => profile.rules.map(rule => ({ ...rule, enabled: false })));
-  if (!rules.length) return false;
-
-  const prompts = deps.getPreset('in_use').prompts || [];
-  if (prompts.some(prompt => prompt.enabled && isPromptMatchedByRules(prompt, rules))) {
-    // 只改当前生效预设，避免把角色卡的临时状态写进预设文件。
-    await deps.updatePresetWith('in_use', preset => {
-      if (deps.getCharacterId() !== characterId) return preset;
-      return applyRulesOnPreset(preset, rules);
-    });
+  // 未绑定不等于必须关闭：仅还原助手确实启用过的方案，不能按所有未绑定规则批量关条目。
+  const beforeStates: Record<string, boolean> = {};
+  for (const preset of Object.values(deps.storage.presets)) {
+    for (const profile of unboundProfiles) {
+      const runtime = preset.quickSwitchRuntimeStates?.[profile.id];
+      if (runtime?.enabled) Object.assign(beforeStates, runtime.beforeStates);
+    }
+  }
+  if (Object.keys(beforeStates).length) {
+    const prompts = deps.getPreset('in_use').prompts || [];
+    if (prompts.some(prompt => typeof beforeStates[prompt.id] === 'boolean' && beforeStates[prompt.id] !== prompt.enabled)) {
+      await deps.updatePresetWith('in_use', preset => {
+        if (deps.getCharacterId() !== characterId) return preset;
+        return restorePromptStatesOnPreset(preset, beforeStates);
+      });
+    }
   }
   if (deps.getCharacterId() !== characterId) return false;
   let changed = false;
@@ -164,18 +170,10 @@ export async function applyQuickSwitchRules(rules: BuiltinQuickSwitchRule[], dep
   const updater = (preset: Preset) => applyRulesOnPreset(preset, rules);
 
   await deps.updatePresetWith('in_use', updater);
-  const loadedPresetName = deps.getLoadedPresetName();
-  if (loadedPresetName) {
-    await deps.updatePresetWith(loadedPresetName, updater);
-  }
 }
 
 export async function restoreQuickSwitchRules(beforeStates: { [promptId: string]: boolean }, deps: QuickSwitchDeps) {
   const updater = (preset: Preset) => restorePromptStatesOnPreset(preset, beforeStates);
 
   await deps.updatePresetWith('in_use', updater);
-  const loadedPresetName = deps.getLoadedPresetName();
-  if (loadedPresetName) {
-    await deps.updatePresetWith(loadedPresetName, updater);
-  }
 }
