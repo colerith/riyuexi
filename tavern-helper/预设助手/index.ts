@@ -49,7 +49,11 @@ import {
   restoreQuickSwitchRules,
   deactivateUnboundQuickSwitchProfiles,
 } from './quickSwitch';
-import { ensureReasoningFormatting, REASONING_FORMATTING_VERSION } from './reasoningFormatting';
+import {
+  ensureReasoningFormatting,
+  inspectReasoningFormatting,
+  REASONING_FORMATTING_VERSION,
+} from './reasoningFormatting';
 import {
   activeSettings,
   generateId,
@@ -387,6 +391,18 @@ function applyDialogTheme($dialog: JQuery<HTMLElement>) {
   applyDialogThemeInPanel(panel, $dialog);
 }
 
+function renderReasoningCheck() {
+  if (!panel) return;
+  const result = inspectReasoningFormatting(getLoadedPresetName);
+  const status = panel.find('[data-reasoning-status]');
+  const signature = JSON.stringify(result);
+  if (status.data('checkSignature') === signature) return;
+  status.data('checkSignature', signature).attr('data-state', result.state);
+  status.find('[data-check-title]').text(result.title);
+  const list = status.find('[data-check-details]').empty();
+  result.details.forEach(detail => list.append($('<li>').text(detail)));
+}
+
 function renderAutomationSettings() {
   if (!panel) return;
   panel
@@ -394,6 +410,7 @@ function renderAutomationSettings() {
     .attr('aria-checked', String(storage.reasoningFormattingEnabled !== false));
   panel.find('[data-automation="mvuAutoEnabled"]').attr('aria-checked', String(storage.mvuAutoEnabled !== false));
   panel.find('[data-reinject-reasoning]').prop('disabled', storage.reasoningFormattingEnabled === false);
+  renderReasoningCheck();
   const status = getPrefillStatus(storage, BUILTIN_QUICK_SWITCH_SCHEMES, getLoadedPresetName());
   panel.find('[data-prefill-toggle]').attr('aria-checked', String(status.enabled)).prop('disabled', !status.model);
   panel
@@ -582,6 +599,7 @@ function bindPanelEvents() {
       toastr.error('重新注入失败，请重试。');
     } finally {
       button.prop('disabled', storage.reasoningFormattingEnabled === false);
+      renderReasoningCheck();
     }
   });
   panel.on('click', '[data-prefill-toggle], [data-prefill-auto]', async event => {
@@ -894,7 +912,12 @@ $(async () => {
 
   void initializeOptionalFeatures();
 
+  const reasoningCheckTimer = setInterval(() => {
+    if (panel?.hasClass('visible')) renderReasoningCheck();
+  }, 1500);
+
   $(window).on('pagehide', () => {
+    clearInterval(reasoningCheckTimer);
     hidePanel();
     unregisterAutoSwitch?.();
     unregisterAutoSwitch = null;

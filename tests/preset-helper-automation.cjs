@@ -71,22 +71,46 @@ function load(file, globals = {}) {
     await formatting.ensureReasoningFormatting({ isEnabled: () => false, getLoadedPresetName: () => '日月西' }),
     false,
   );
-  $('body').append('<select id="reasoning_select"><option value="日月西">日月西</option><option value="Blank">Blank</option></select><input id="reasoning_prefix"><input id="reasoning_suffix"><input id="reasoning_separator"><input type="checkbox" id="reasoning_auto_parse">');
+  $('body').append(
+    '<select id="reasoning_select"><option value="日月西">日月西</option><option value="Blank">Blank</option></select><input id="reasoning_prefix"><input id="reasoning_suffix"><input id="reasoning_separator"><input type="checkbox" id="reasoning_auto_parse">',
+  );
   let savedTemplate = null;
-  const repair = load('reasoningFormatting', { SillyTavern: { getPresetManager: () => ({
-    getAllPresets: () => savedTemplate ? ['日月西'] : [],
-    getCompletionPresetByName: () => savedTemplate,
-    savePreset: async (_, template) => { savedTemplate = template; },
-  }) } });
+  const repair = load('reasoningFormatting', {
+    SillyTavern: {
+      getPresetManager: () => ({
+        getAllPresets: () => (savedTemplate ? ['日月西'] : []),
+        getCompletionPresetByName: () => savedTemplate,
+        savePreset: async (_, template) => {
+          savedTemplate = template;
+        },
+      }),
+    },
+  });
   await repair.ensureReasoningFormatting({ getLoadedPresetName: () => '日月西' });
   assert.equal($('#reasoning_prefix').val(), '<electric>');
-  $('#reasoning_prefix').val('broken'); $('#reasoning_auto_parse').prop('checked', false);
+  $('#reasoning_prefix').val('broken');
+  $('#reasoning_auto_parse').prop('checked', false);
   await repair.ensureReasoningFormatting({ getLoadedPresetName: () => '日月西' });
   assert.equal($('#reasoning_prefix').val(), '<electric>');
   assert.equal($('#reasoning_auto_parse').prop('checked'), true);
   $('#start_reply_with').val('manual');
   await repair.ensureReasoningFormatting({ getLoadedPresetName: () => '其他预设' });
   assert.equal($('#start_reply_with').val(), 'manual', 'formatting must not overwrite prefill decisions');
+  assert.equal(repair.inspectReasoningFormatting(() => '其他预设').state, 'inactive');
+  assert.equal(repair.inspectReasoningFormatting(() => '日月西').state, 'error');
+  $('body').append(
+    '<input type="checkbox" id="reasoning_auto_expand"><input type="checkbox" id="reasoning_show_hidden"><input type="checkbox" id="reasoning_add_to_prompts"><input id="reasoning_max_additions">',
+  );
+  await repair.ensureReasoningFormatting({ getLoadedPresetName: () => '日月西' });
+  assert.equal(repair.inspectReasoningFormatting(() => '日月西').state, 'ok');
+  $('#reasoning_suffix').val('</wrong>');
+  let inspection = repair.inspectReasoningFormatting(() => '日月西');
+  assert.equal(inspection.state, 'error');
+  assert.ok(inspection.details.some(detail => detail.includes('</wrong>') && detail.includes('</electric>')));
+  await repair.ensureReasoningFormatting({ getLoadedPresetName: () => '日月西' });
+  assert.equal(repair.inspectReasoningFormatting(() => '日月西').state, 'ok');
+  $('#reasoning_auto_parse').remove();
+  assert.equal(repair.inspectReasoningFormatting(() => '日月西').state, 'pending');
   let writes = 0;
   const env = load('environment', {
     window: {},

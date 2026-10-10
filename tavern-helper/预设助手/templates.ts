@@ -115,13 +115,17 @@ export const panelHtml = `
                             <div><strong>推理内容格式化</strong><small>默认开启。关闭后停止自动修改格式化配置，保留酒馆当前设置。</small></div>
                             <button class="panel-setting-switch" type="button" role="switch" aria-label="推理内容格式化" data-automation="reasoningFormattingEnabled" aria-checked="true"><span></span></button>
                         </div>
-                        <button type="button" data-reinject-reasoning>重新注入推理格式化</button>
+                        <div class="panel-check-status" data-reasoning-status data-state="pending" role="status" aria-live="polite">
+                            <strong data-check-title>正在检查当前配置…</strong>
+                            <ul data-check-details></ul>
+                        </div>
+                        <div class="panel-setting-actions"><button class="panel-setting-action" type="button" data-reinject-reasoning><i class="fas fa-rotate-right" aria-hidden="true"></i>重新注入推理格式化</button></div>
                         <div class="panel-setting-row">
                             <div><strong>【以……开始回复】预填充</strong><small>开启时填入 &lt;electric&gt;，关闭时清空。手动选择按模型保存。</small></div>
                             <button class="panel-setting-switch" type="button" role="switch" aria-label="回复预填充" data-prefill-toggle aria-checked="false"><span></span></button>
                         </div>
                         <p class="panel-settings-note" data-prefill-status aria-live="polite"></p>
-                        <button type="button" data-prefill-auto>当前模型恢复自动识别</button>
+                        <div class="panel-setting-actions"><button class="panel-setting-action" type="button" data-prefill-auto><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i>当前模型恢复自动识别</button></div>
                         <div class="panel-setting-row">
                             <div><strong>MVU 卡自动开启变量提醒</strong><small>默认开启，根据角色卡识别同步 MVU变量条目。关闭后停止自动切换，保留条目当前状态。</small></div>
                             <button class="panel-setting-switch" type="button" role="switch" aria-label="MVU 自动提醒" data-automation="mvuAutoEnabled" aria-checked="true"><span></span></button>
@@ -858,8 +862,8 @@ export const panelCss = `
         .control-panel.dark-mode[data-ui-skin="xiangyata"] .main-menu button.theme-auto-off { color: var(--panel-text-value) !important; }
 
     #control-panel-container .main-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    #control-panel-container .panel-settings-content { display: flex; flex-direction: column; gap: 12px; }
-    #control-panel-container .panel-settings-card { padding: 14px; border: 1px solid var(--panel-border); border-radius: 12px; background: var(--panel-soft-module); }
+    #control-panel-container .panel-settings-content { min-width: 0; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
+    #control-panel-container .panel-settings-card { min-width: 0; padding: 14px; border: 1px solid var(--panel-border); border-radius: 12px; background: var(--panel-soft-module); }
     #control-panel-container .panel-settings-title { margin: 0 0 10px; padding: 1px 0 1px 10px; border-left: 3px solid var(--panel-text-accent); color: var(--panel-text-main); font-size: 1.02em; font-weight: 700; text-align: left; }
     #control-panel-container .panel-settings-note { margin: 0 0 10px; color: var(--panel-text-value); font-size: .86em; line-height: 1.55; }
     #control-panel-container #panel-floating-icon { max-width: 112px; flex-shrink: 0; }
@@ -877,6 +881,20 @@ export const panelCss = `
     #control-panel-container .panel-setting-switch span { position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--panel-bg); box-shadow: 0 1px 4px rgba(20,28,40,.22); transition: transform .2s ease; }
     #control-panel-container .panel-setting-switch[aria-checked="true"] { border-color: var(--panel-text-accent); background: linear-gradient(135deg, var(--panel-text-accent), var(--panel-text-highlight)); box-shadow: 0 2px 7px var(--highlight-border); }
     #control-panel-container .panel-setting-switch[aria-checked="true"] span { transform: translateX(20px); }
+    #control-panel-container .panel-setting-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 16px; margin-bottom: 8px; border-bottom: 1px solid var(--panel-border); }
+    #control-panel-container .panel-setting-action { appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; max-width: 100%; padding: 9px 14px; margin: 0; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel-button-bg); color: var(--panel-text-accent); font: inherit; font-size: .88em; font-weight: 600; line-height: 1.4; white-space: normal; text-align: center; cursor: pointer; box-shadow: none; transition: background .18s, border-color .18s, transform .18s; }
+    #control-panel-container .panel-setting-action:hover:not(:disabled) { border-color: var(--panel-text-accent); background: var(--panel-soft-module); }
+    #control-panel-container .panel-setting-action:active:not(:disabled) { transform: translateY(1px); }
+    #control-panel-container .panel-setting-action:focus-visible { outline: 2px solid var(--panel-text-accent); outline-offset: 3px; }
+    #control-panel-container .panel-setting-action:disabled, #control-panel-container .panel-setting-switch:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+    #control-panel-container .panel-setting-switch { appearance: none; min-width: 48px; min-height: 28px; margin: 0; line-height: 1; }
+    #control-panel-container .panel-check-status { margin: 6px 0 10px; padding: 11px 13px; border: 1px solid var(--panel-border); border-left: 3px solid var(--panel-text-value); border-radius: 9px; background: var(--panel-button-bg); color: var(--panel-text-value); font-size: .84em; line-height: 1.55; overflow-wrap: anywhere; }
+    #control-panel-container .panel-check-status strong { display: block; color: var(--panel-text-main); font-weight: 600; }
+    #control-panel-container .panel-check-status ul { margin: 5px 0 0; padding: 0; list-style: none; }
+    #control-panel-container .panel-check-status li + li { margin-top: 4px; }
+    #control-panel-container .panel-check-status[data-state="ok"] { border-left-color: #4eae8d; }
+    #control-panel-container .panel-check-status[data-state="error"] { border-left-color: #e7a15d; }
+    #control-panel-container .panel-settings-note { overflow-wrap: anywhere; }
     #control-panel-container .panel-setting-switch:focus-visible { outline: 2px solid var(--panel-text-accent); outline-offset: 2px; }
     #control-panel-container .main-menu button, #control-panel-container .button-grid-2 button, #control-panel-container .preset-options button, #control-panel-container .help-content button, #control-panel-container #qr-go-to-settings, #control-panel-container .preset-list-item button {
         font-family: var(--font-main); background-color: var(--panel-button-bg); border: var(--panel-button-border);
