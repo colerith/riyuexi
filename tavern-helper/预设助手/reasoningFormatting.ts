@@ -26,11 +26,12 @@ function updateInput(selector: string, value: string) {
 
 export async function ensureReasoningFormatting(options: {
   configuredVersion?: number;
+  isEnabled?: () => boolean;
   getLoadedPresetName: () => string | null;
 }): Promise<boolean> {
+  if (options.isEnabled?.() === false) return false;
   const loadedPresetName = (options.getLoadedPresetName() || '').trim();
   if (!loadedPresetName.includes('日月西')) {
-    updateInput('#start_reply_with', '');
     const $select = $('#reasoning_select');
     const blankName = $select
       .find('option')
@@ -71,6 +72,7 @@ export async function ensureReasoningFormatting(options: {
       return ensureReasoningFormatting(options);
     }
   }
+  if (options.isEnabled?.() === false) return false;
   selectTemplate(REASONING_TEMPLATE.name);
   updateInput('#reasoning_prefix', REASONING_TEMPLATE.prefix);
   updateInput('#reasoning_suffix', REASONING_TEMPLATE.suffix);

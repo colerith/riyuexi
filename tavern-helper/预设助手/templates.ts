@@ -110,6 +110,24 @@ export const panelHtml = `
                 </header>
                 <div class="panel-content panel-settings-content">
                     <section class="panel-settings-card">
+                        <div class="setting-group-title panel-settings-title">自动设置</div>
+                        <div class="panel-setting-row">
+                            <div><strong>推理内容格式化</strong><small>默认开启。关闭后停止自动修改格式化配置，保留酒馆当前设置。</small></div>
+                            <button class="panel-setting-switch" type="button" role="switch" aria-label="推理内容格式化" data-automation="reasoningFormattingEnabled" aria-checked="true"><span></span></button>
+                        </div>
+                        <button type="button" data-reinject-reasoning>重新注入推理格式化</button>
+                        <div class="panel-setting-row">
+                            <div><strong>【以……开始回复】预填充</strong><small>开启时填入 &lt;electric&gt;，关闭时清空。手动选择按模型保存。</small></div>
+                            <button class="panel-setting-switch" type="button" role="switch" aria-label="回复预填充" data-prefill-toggle aria-checked="false"><span></span></button>
+                        </div>
+                        <p class="panel-settings-note" data-prefill-status aria-live="polite"></p>
+                        <button type="button" data-prefill-auto>当前模型恢复自动识别</button>
+                        <div class="panel-setting-row">
+                            <div><strong>MVU 卡自动开启变量提醒</strong><small>默认开启，根据角色卡识别同步 MVU变量条目。关闭后停止自动切换，保留条目当前状态。</small></div>
+                            <button class="panel-setting-switch" type="button" role="switch" aria-label="MVU 自动提醒" data-automation="mvuAutoEnabled" aria-checked="true"><span></span></button>
+                        </div>
+                    </section>
+                    <section class="panel-settings-card">
                         <div class="setting-group-title panel-settings-title">外观</div>
                         <div class="panel-theme-mode-field">
                             <label for="panel-theme-mode">昼夜模式</label>

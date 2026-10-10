@@ -124,11 +124,16 @@ function hasPromptToggleDiffByNameIncludes(preset: Preset, keyword: string, expe
 }
 
 interface EnvironmentPromptDeps {
+  isEnabled?: () => boolean;
   updatePresetWith: (name: string, updater: (preset: Preset) => Preset) => Promise<Preset>;
   getLoadedPresetName: () => string | null;
 }
 
 export async function applyEnvironmentPromptToggles(deps: EnvironmentPromptDeps) {
+  if (deps.isEnabled?.() === false) {
+    lastAppliedSignature = '';
+    return;
+  }
   if (isApplyingEnvironmentToggles) {
     debugLog(`${LOG_PREFIX} 跳过：上一次环境联动仍在执行中`);
     return;
@@ -146,7 +151,7 @@ export async function applyEnvironmentPromptToggles(deps: EnvironmentPromptDeps)
   debugLog(`${LOG_PREFIX} 目标状态：MVU变量=${shouldEnableMvuPrompt}`);
 
   const updater = (preset: Preset) => {
-    if (!preset.prompts) return preset;
+    if (deps.isEnabled?.() === false || !preset.prompts) return preset;
     setPromptEnabledByNameIncludes(preset, 'MVU变量', shouldEnableMvuPrompt);
     return preset;
   };

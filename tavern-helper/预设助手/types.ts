@@ -230,6 +230,9 @@ export interface StorageData {
   };
   /** 已自动应用的推理内容格式化配置版本。 */
   reasoningFormattingVersion?: number;
+  reasoningFormattingEnabled?: boolean;
+  mvuAutoEnabled?: boolean;
+  prefillOverrides?: Record<string, boolean>;
   /** 单调递增的持久化时间戳，用于从多份备份中选择最新配置。 */
   storageRevision?: number;
 }

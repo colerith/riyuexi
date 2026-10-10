@@ -11,8 +11,8 @@ import {
 } from './bootstrap';
 import { CHANGELOGS, CURRENT_CHANGELOG_VERSION } from './changelog';
 import { BUILTIN_QUICK_SWITCH_SCHEMES, defaultPreset } from './constants';
-import { applyEnvironmentPromptToggles } from './environment';
-import { syncModelLinkedQuickSwitch } from './modelMode';
+import { applyEnvironmentPromptToggles as applyEnvironmentPromptTogglesBase } from './environment';
+import { getPrefillStatus, syncModelLinkedQuickSwitch } from './modelMode';
 import {
   applyConfiguredNsfwMode,
   normalizeNsfwSettings,
@@ -105,6 +105,10 @@ function syncNsfwEntryIndicators(status: NsfwRuntimeStatus) {
   if (panel?.hasClass('visible')) void renderStatusDisplay();
 }
 
+function applyEnvironmentPromptToggles(deps: Parameters<typeof applyEnvironmentPromptTogglesBase>[0]) {
+  return applyEnvironmentPromptTogglesBase({ ...deps, isEnabled: () => storage.mvuAutoEnabled !== false });
+}
+
 async function applyNsfwSettings(settings = activeSettings) {
   await applyConfiguredNsfwMode(settings, { updatePresetWith, getLoadedPresetName });
 }
@@ -136,6 +140,7 @@ async function syncModelMode() {
       applyRules: rules => applyQuickSwitchRules(rules, { updatePresetWith, getLoadedPresetName }),
     });
     if (storageChanged) saveStorage();
+    renderAutomationSettings();
   })().finally(() => {
     modelModeSyncPromise = null;
   });
@@ -382,8 +387,25 @@ function applyDialogTheme($dialog: JQuery<HTMLElement>) {
   applyDialogThemeInPanel(panel, $dialog);
 }
 
+function renderAutomationSettings() {
+  if (!panel) return;
+  panel
+    .find('[data-automation="reasoningFormattingEnabled"]')
+    .attr('aria-checked', String(storage.reasoningFormattingEnabled !== false));
+  panel.find('[data-automation="mvuAutoEnabled"]').attr('aria-checked', String(storage.mvuAutoEnabled !== false));
+  panel.find('[data-reinject-reasoning]').prop('disabled', storage.reasoningFormattingEnabled === false);
+  const status = getPrefillStatus(storage, BUILTIN_QUICK_SWITCH_SCHEMES, getLoadedPresetName());
+  panel.find('[data-prefill-toggle]').attr('aria-checked', String(status.enabled)).prop('disabled', !status.model);
+  panel
+    .find('[data-prefill-status]')
+    .text(
+      `模型：${status.model || '未识别'}。${status.reason}${status.manual ? ` 已手动覆盖：${status.enabled ? '预填充' : '不预填充'}（已记住）。` : ' 当前跟随自动识别。'}`,
+    );
+}
+
 function renderPanelEntrySettings() {
   if (!panel) return;
+  renderAutomationSettings();
   const entries = normalizePanelEntries();
   (Object.keys(entries) as Array<keyof typeof entries>).forEach(mode => {
     panel!.find(`[data-entry-mode="${mode}"]`).attr('aria-checked', String(entries[mode]));
@@ -526,6 +548,57 @@ function bindPanelEvents() {
     storage.floatingIcon = normalizeFloatingIcon($(event.currentTarget).val());
     saveStorage();
     syncPanelEntries();
+  });
+  panel.on('click', '[data-automation]', async event => {
+    const key = $(event.currentTarget).attr('data-automation') as 'reasoningFormattingEnabled' | 'mvuAutoEnabled';
+    storage[key] = storage[key] === false;
+    saveStorage();
+    renderAutomationSettings();
+    try {
+      if (key === 'reasoningFormattingEnabled') {
+        await ensureReasoningFormatting({
+          getLoadedPresetName,
+          isEnabled: () => storage.reasoningFormattingEnabled !== false,
+        });
+      } else {
+        await applyEnvironmentPromptToggles({ updatePresetWith, getLoadedPresetName });
+      }
+    } catch (error) {
+      console.error(error);
+      toastr.error('应用设置失败，请重试。');
+    }
+  });
+  panel.on('click', '[data-reinject-reasoning]', async event => {
+    const button = $(event.currentTarget).prop('disabled', true);
+    try {
+      const applied = await ensureReasoningFormatting({
+        getLoadedPresetName,
+        isEnabled: () => storage.reasoningFormattingEnabled !== false,
+      });
+      if (applied) toastr.success('推理内容格式化已重新注入。');
+      else toastr.info('未注入：请开启此功能、切换到日月西预设，并确认酒馆格式化功能已就绪。');
+    } catch (error) {
+      console.error(error);
+      toastr.error('重新注入失败，请重试。');
+    } finally {
+      button.prop('disabled', storage.reasoningFormattingEnabled === false);
+    }
+  });
+  panel.on('click', '[data-prefill-toggle], [data-prefill-auto]', async event => {
+    const status = getPrefillStatus(storage, BUILTIN_QUICK_SWITCH_SCHEMES, getLoadedPresetName());
+    if (!status.model) return;
+    storage.prefillOverrides ??= {};
+    if ($(event.currentTarget).is('[data-prefill-auto]')) delete storage.prefillOverrides[status.key];
+    else storage.prefillOverrides[status.key] = !status.enabled;
+    saveStorage();
+    renderAutomationSettings();
+    try {
+      if (modelModeSyncPromise) await modelModeSyncPromise;
+      await syncModelMode();
+    } catch (error) {
+      console.error(error);
+      toastr.error('应用预填充失败，请重试。');
+    }
   });
   panel.on('click', '[data-entry-mode]', event => {
     const mode = String($(event.currentTarget).attr('data-entry-mode')) as
@@ -673,6 +746,7 @@ async function initializeOptionalFeatures() {
       if (
         await ensureReasoningFormatting({
           configuredVersion: storage.reasoningFormattingVersion,
+          isEnabled: () => storage.reasoningFormattingEnabled !== false,
           getLoadedPresetName,
         })
       ) {
@@ -756,6 +830,7 @@ async function handlePresetChanged() {
   if (
     await ensureReasoningFormatting({
       configuredVersion: storage.reasoningFormattingVersion,
+      isEnabled: () => storage.reasoningFormattingEnabled !== false,
       getLoadedPresetName,
     })
   ) {

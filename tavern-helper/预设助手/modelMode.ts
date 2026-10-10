@@ -54,6 +54,28 @@ async function syncCustomExcludeBody(model: string) {
   );
 }
 
+export function getPrefillStatus(storage: StorageData, schemes: BuiltinQuickSwitchScheme[], presetName: string | null) {
+  const model = String(SillyTavern.getChatCompletionModel?.() || '').trim();
+  const key = JSON.stringify([String(SillyTavern.chatCompletionSettings?.chat_completion_source || ''), model]);
+  const mode = schemes
+    .flatMap(scheme => (scheme.type === 'mode' ? scheme.modes || [] : []))
+    .find(item => matchesModel(model, item.modelPattern));
+  const supportedPreset = (presetName || '').includes('日月西');
+  const automatic = supportedPreset && !!mode?.startReplyWith;
+  const override = model ? storage.prefillOverrides?.[key] : undefined;
+  const enabled = override ?? automatic;
+  const reason = !supportedPreset
+    ? '当前不是日月西预设，默认不预填充。'
+    : !model
+      ? '尚未识别到模型，默认不预填充。'
+      : !mode
+        ? '未匹配已知模型规则，默认不预填充。'
+        : automatic
+          ? `匹配 ${mode.label}，使用 <electric> 衔接推理内容。`
+          : `匹配 ${mode.label}，按该模式规则不预填充。`;
+  return { model, key, enabled, reason, manual: override !== undefined };
+}
+
 export async function syncModelLinkedQuickSwitch(options: {
   schemes: BuiltinQuickSwitchScheme[];
   storage: StorageData;
@@ -62,11 +84,12 @@ export async function syncModelLinkedQuickSwitch(options: {
   applyRules: (rules: BuiltinQuickSwitchRule[]) => Promise<void>;
 }): Promise<boolean> {
   const model = String(SillyTavern.getChatCompletionModel?.() || '').trim();
+  const prefill = getPrefillStatus(options.storage, options.schemes, options.getLoadedPresetName());
+  applyStartReplyWith(prefill.enabled ? '<electric>' : '');
   await syncCustomExcludeBody(model);
 
   const loadedPresetName = (options.getLoadedPresetName() || '').trim();
   if (!loadedPresetName.includes('日月西')) {
-    applyStartReplyWith('');
     return false;
   }
   if (!model) return false;
@@ -96,8 +119,7 @@ export async function syncModelLinkedQuickSwitch(options: {
       targetPreset.updateTime = Date.now();
     }
 
-    const prefixChanged = applyStartReplyWith(mode.startReplyWith);
-    if (modeChanged || prefixChanged) {
+    if (modeChanged) {
       console.info(`预设助手 [模型联动]: ${model} -> ${scheme.name} / ${mode.label}`);
     }
     return modeChanged;

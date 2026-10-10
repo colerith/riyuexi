@@ -2,7 +2,7 @@ import { containOverlayScroll } from '../../overlay';
 import type { QuickSwitchPromptGroupConfig } from './types';
 
 import { combineDisplayRules, resolveBaiBaiGroupRules } from './presetGroups';
-import { applyStartReplyWith } from './modelMode';
+import { applyStartReplyWith, getPrefillStatus } from './modelMode';
 import { DEFAULT_NSFW_SETTINGS, normalizeNsfwSettings, splitNsfwKeywords } from './nsfw';
 
 const PROMPT_GROUP_FLAT_ORDER_STORAGE_KEY = 'th_qs_prompt_group_flat_order_v1';
@@ -4928,7 +4928,12 @@ export function bindGeneralActionHandler(deps: BindGeneralActionsDeps) {
             updatePresetWith: deps.updatePresetWith,
             getLoadedPresetName: deps.getLoadedPresetName,
           });
-          applyStartReplyWith(mode.startReplyWith);
+          const prefill = getPrefillStatus(
+            deps.storage,
+            deps.builtinQuickSwitchSchemes || [],
+            deps.getLoadedPresetName(),
+          );
+          applyStartReplyWith(prefill.enabled ? '<electric>' : '');
           runtimeState.modeId = mode.id;
           runtimeState.enabled = true;
           runtimeState.updateTime = Date.now();
