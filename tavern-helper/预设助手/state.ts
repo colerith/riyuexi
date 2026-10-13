@@ -26,14 +26,14 @@ export let storage: StorageData = {
   panelEntries: {
     floatingBall: true,
     quickReply: false,
-    extensionsMenu: false,
+    extensionsMenu: true,
   },
 };
 
 export const defaultPanelEntries = {
   floatingBall: true,
   quickReply: false,
-  extensionsMenu: false,
+  extensionsMenu: true,
 };
 
 export function normalizePanelEntries() {
@@ -42,6 +42,11 @@ export function normalizePanelEntries() {
     quickReply: storage.panelEntries?.quickReply ?? defaultPanelEntries.quickReply,
     extensionsMenu: storage.panelEntries?.extensionsMenu ?? defaultPanelEntries.extensionsMenu,
   };
+  // 仅升级时补开一次，后续尊重用户主动关闭的选择。
+  if (!storage.extensionsMenuDefaultMigrated) {
+    storage.panelEntries.extensionsMenu = true;
+    storage.extensionsMenuDefaultMigrated = true;
+  }
   return storage.panelEntries;
 }
 

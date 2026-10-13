@@ -223,6 +223,7 @@ export interface StorageData {
     changelogSuppressed?: boolean;
   };
   /** 控制面板的宿主页面打开入口；可同时启用多个。 */
+  extensionsMenuDefaultMigrated?: boolean;
   panelEntries?: {
     floatingBall: boolean;
     quickReply: boolean;

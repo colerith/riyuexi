@@ -748,7 +748,7 @@ async function initializeScript() {
       panelEntries: {
         floatingBall: true,
         quickReply: false,
-        extensionsMenu: false,
+        extensionsMenu: true,
       },
     });
     saveStorage();
