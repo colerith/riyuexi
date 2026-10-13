@@ -140,8 +140,8 @@ export const BUILTIN_QUICK_SWITCH_SCHEMES: BuiltinQuickSwitchScheme[] = [
       },
       {
         id: 'gemini flash',
-        label: 'Gemini flash模型',
-        modelPattern: 'gemini.*3[._-]?[5-8].*flash',
+        label: 'Gemini Flash / Argon模型',
+        modelPattern: 'gemini.*(?:3[._-]?[5-8].*flash|4[._-]argon)',
         startReplyWith: '',
         rules: [
           { nameIncludes: 'Gemini尾部①', enabled: false },
