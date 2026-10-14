@@ -1,3 +1,4 @@
+import { migrateParagraphCommands } from './paragraphPrompts';
 import { SCRIPT_ID, defaultPreset } from './constants';
 import { normalizeNsfwSettings } from './nsfw';
 import { loadStorageFromBrowserCache, loadStorageFromIndexedDb, saveStorageToBrowser } from './persistence';
@@ -277,6 +278,7 @@ export async function loadStorage() {
     Object.values(storage.quickSwitchProfiles).forEach(normalizeQuickSwitchProfile);
   }
 
+  Object.values(storage.presets).forEach(preset => migrateParagraphCommands(preset.commands));
   normalizePanelEntries();
 
   refreshActiveSettings();

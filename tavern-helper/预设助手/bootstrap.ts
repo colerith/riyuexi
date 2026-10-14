@@ -247,6 +247,7 @@ export function registerHostEntries(deps: RegisterControlButtonDeps): HostEntryC
   let dockEdge: 'left' | 'right' | null = null;
   let position = { left: 0, top: 0 };
   let resizeFrame: number | null = null;
+  let viewportSettleTimer: ReturnType<typeof setTimeout> | undefined;
   let opening = false;
   let nsfwActive = false;
   let suppressClickTimer: ReturnType<typeof setTimeout> | undefined;
@@ -268,13 +269,19 @@ export function registerHostEntries(deps: RegisterControlButtonDeps): HostEntryC
 
   const viewportInsets = () => {
     const vv = hostWin.visualViewport;
-    const left = Math.max(0, vv?.offsetLeft || 0);
-    const top = Math.max(0, vv?.offsetTop || 0);
+    const finite = (value: number | undefined, fallback: number) => (Number.isFinite(value) ? value! : fallback);
+    const width = Math.max(FAB_SIZE, hostWin.innerWidth || hostDoc.documentElement.clientWidth || FAB_SIZE);
+    const height = Math.max(FAB_SIZE, hostWin.innerHeight || hostDoc.documentElement.clientHeight || FAB_SIZE);
+    const visibleWidth = Math.min(width, Math.max(FAB_SIZE, finite(vv?.width, width) || width));
+    const visibleHeight = Math.min(height, Math.max(FAB_SIZE, finite(vv?.height, height) || height));
+    // Safari 恢复页面或收起键盘时可能短暂留下过期的 visualViewport 偏移。
+    const left = Math.min(Math.max(0, finite(vv?.offsetLeft, 0)), width - visibleWidth);
+    const top = Math.min(Math.max(0, finite(vv?.offsetTop, 0)), height - visibleHeight);
     return {
       left,
       top,
-      right: Math.max(0, hostWin.innerWidth - (vv?.width || hostWin.innerWidth) - left),
-      bottom: Math.max(0, hostWin.innerHeight - (vv?.height || hostWin.innerHeight) - top),
+      right: Math.max(0, hostWin.innerWidth - visibleWidth - left),
+      bottom: Math.max(0, hostWin.innerHeight - visibleHeight - top),
     };
   };
   const clamp = (left: number, top: number, gap = FAB_SAFE_GAP) => {
@@ -352,7 +359,8 @@ export function registerHostEntries(deps: RegisterControlButtonDeps): HostEntryC
       const style = hostDoc.createElement('style');
       style.id = FLOATING_STYLE_ID;
       style.textContent = `
-        #${FLOATING_ID}{position:fixed;width:${FAB_SIZE}px;height:${FAB_SIZE}px;z-index:2147482998;border:0;border-radius:0;background:transparent;color:inherit;box-shadow:none;padding:0;display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none;will-change:left,top,transform;transition:opacity .18s ease,transform .18s ease}
+        #${FLOATING_ID}{position:fixed;width:${FAB_SIZE}px;height:${FAB_SIZE}px;z-index:2147482998;border:0;border-radius:0;background:transparent;color:inherit;box-shadow:none;padding:0;display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none;-webkit-appearance:none;appearance:none;transition:opacity .18s ease,transform .18s ease}
+        #${FLOATING_ID}{position:fixed!important;display:flex!important;visibility:visible!important;width:${FAB_SIZE}px!important;height:${FAB_SIZE}px!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;right:auto!important;bottom:auto!important;z-index:2147482998!important;overflow:visible!important;box-sizing:border-box!important;-webkit-appearance:none!important;appearance:none!important}
         #${FLOATING_ID} img{display:block;width:${FAB_IMAGE_SIZE}px;height:${FAB_IMAGE_SIZE}px;max-width:${FAB_IMAGE_SIZE}px;max-height:${FAB_IMAGE_SIZE}px;object-fit:contain;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 5px 7px rgba(0,0,0,.28))}
         #${FLOATING_ID}:active{transform:scale(.96)}
         #${FLOATING_ID}.is-dragging{cursor:grabbing;transition:opacity .1s ease}
@@ -367,7 +375,9 @@ export function registerHostEntries(deps: RegisterControlButtonDeps): HostEntryC
     if (fab) {
       const image = fab.querySelector('img');
       if (image && image.getAttribute('src') !== iconUrl) {
-        image.style.visibility = '';
+        const fallback = fab.querySelector('span');
+        if (fallback) fallback.hidden = false;
+        image.style.visibility = 'hidden';
         image.src = iconUrl;
       }
       return applyPosition();
@@ -378,7 +388,6 @@ export function registerHostEntries(deps: RegisterControlButtonDeps): HostEntryC
     fab.title = '打开预设助手（可拖动）';
     fab.setAttribute('aria-label', '打开预设助手');
     const image = hostDoc.createElement('img');
-    image.src = iconUrl;
     image.alt = '';
     image.setAttribute('aria-hidden', 'true');
     const fallback = hostDoc.createElement('span');
@@ -387,14 +396,17 @@ export function registerHostEntries(deps: RegisterControlButtonDeps): HostEntryC
     fab.appendChild(fallback);
     image.style.position = 'relative';
     image.addEventListener('load', () => {
+      image.style.visibility = '';
       fallback.hidden = true;
     });
     image.addEventListener('error', () => {
       fallback.hidden = false;
       image.style.visibility = 'hidden';
     });
+    image.src = iconUrl;
     fab.appendChild(image);
-    hostDoc.body.appendChild(fab);
+    // 脱离 body 的 transform/filter/overflow，避免固定入口受宿主主题裁切。
+    hostDoc.documentElement.appendChild(fab);
     loadPosition();
     applyPosition();
     fab.addEventListener('click', () => {
@@ -496,7 +508,7 @@ export function registerHostEntries(deps: RegisterControlButtonDeps): HostEntryC
   };
 
   const ensureMenuObserver = () => {
-    if (menuObserver || !hostDoc.body) return;
+    if (menuObserver || !hostDoc.documentElement) return;
     menuObserver = new MutationObserver(() => {
       if (current.extensionsMenu && !hostDoc.getElementById(EXTENSION_ENTRY_ID)) ensureExtensionMenu();
       if (current.floatingBall && (!hostDoc.getElementById(FLOATING_ID) || !hostDoc.getElementById(FLOATING_STYLE_ID)))
@@ -516,11 +528,21 @@ export function registerHostEntries(deps: RegisterControlButtonDeps): HostEntryC
     if (resizeFrame !== null) return;
     resizeFrame = hostWin.requestAnimationFrame(() => {
       resizeFrame = null;
-      applyPosition();
+      if (current.floatingBall) ensureFloating();
     });
   };
+  const onViewportSettled = () => {
+    onResize();
+    clearTimeout(viewportSettleTimer);
+    viewportSettleTimer = setTimeout(onResize, 300);
+  };
+  const onVisibilityChange = () => {
+    if (hostDoc.visibilityState !== 'hidden') onViewportSettled();
+  };
+  hostDoc.addEventListener('visibilitychange', onVisibilityChange);
+  hostWin.addEventListener('orientationchange', onViewportSettled);
   hostWin.addEventListener('resize', onResize);
-  hostWin.addEventListener('pageshow', onResize);
+  hostWin.addEventListener('pageshow', onViewportSettled);
   hostWin.visualViewport?.addEventListener('scroll', onResize);
   hostWin.visualViewport?.addEventListener('resize', onResize);
 
@@ -546,7 +568,10 @@ export function registerHostEntries(deps: RegisterControlButtonDeps): HostEntryC
       cancelDrag?.();
       clearTimeout(suppressClickTimer);
       hostWin.removeEventListener('resize', onResize);
-      hostWin.removeEventListener('pageshow', onResize);
+      hostWin.removeEventListener('pageshow', onViewportSettled);
+      hostWin.removeEventListener('orientationchange', onViewportSettled);
+      hostDoc.removeEventListener('visibilitychange', onVisibilityChange);
+      clearTimeout(viewportSettleTimer);
       hostWin.visualViewport?.removeEventListener('scroll', onResize);
       hostWin.visualViewport?.removeEventListener('resize', onResize);
       if (resizeFrame !== null) {
