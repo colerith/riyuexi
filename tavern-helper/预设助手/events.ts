@@ -1,3 +1,4 @@
+import { defaultCommands } from './constants';
 import { containOverlayScroll } from '../../overlay';
 import type { QuickSwitchPromptGroupConfig } from './types';
 
@@ -5034,6 +5035,17 @@ export function bindGeneralActionHandler(deps: BindGeneralActionsDeps) {
         deps.saveStorage();
         await deps.triggerRenderQuickSwitchPanel();
         toastr.success('已删除快捷开关配置');
+        break;
+      }
+      case 'reset_preset_commands': {
+        const editingPresetId = deps.getEditingPresetId();
+        if (!editingPresetId || !deps.storage.presets[editingPresetId]) return;
+        panel.find('#preset-commands-wrapper .preset-command-input').each(function () {
+          const key = $(this).attr('data-command-key') as keyof typeof defaultCommands;
+          if (Object.prototype.hasOwnProperty.call(defaultCommands, key)) $(this).val(defaultCommands[key]);
+        });
+        panel.find('#preset-commands-wrapper').show();
+        toastr.success('已还原本预设的默认提示词，点击“保存更改”后生效；取消可放弃还原。');
         break;
       }
       case 'toggle_preset_commands': {

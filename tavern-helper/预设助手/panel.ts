@@ -833,7 +833,7 @@ export async function renderPresetEditor(deps: RenderPresetEditorDeps) {
   container.append(narrateHtml);
 
   container.append(
-    `<div class="setting-group"><div class="setting-group-title">高级：指令覆盖 (在此处修改仅影响本预设)</div><button data-action="toggle_preset_commands">显示/隐藏 指令详情</button><div id="preset-commands-wrapper" style="display:none; margin-top:10px;"></div></div>`,
+    `<div class="setting-group"><div class="setting-group-title">高级：指令覆盖 (在此处修改仅影响本预设)</div><div class="button-grid-2"><button type="button" data-action="toggle_preset_commands">显示/隐藏 指令详情</button><button type="button" data-action="reset_preset_commands" title="还原本预设的全部指令覆盖；点击保存更改后生效">还原默认提示词</button></div><small>还原仅影响本预设的指令覆盖，点击“保存更改”后生效。</small><div id="preset-commands-wrapper" style="display:none; margin-top:10px;"></div></div>`,
   );
 
   const actionsHtml = `
