@@ -38,12 +38,25 @@ export function loadStorageFromBrowserCache(): StorageEnvelope | null {
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+    let settled = false;
+    const fail = () => {
+      settled = true;
+      clearTimeout(timer);
+      reject(new Error('IndexedDB 打开失败、被阻塞或超时'));
+    };
+    const timer = setTimeout(fail, 3000);
     request.onupgradeneeded = () => {
       const database = request.result;
       if (!database.objectStoreNames.contains(STORE_NAME)) database.createObjectStore(STORE_NAME);
     };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error('IndexedDB 打开失败'));
+    request.onsuccess = () => {
+      clearTimeout(timer);
+      if (settled) return request.result.close();
+      settled = true;
+      resolve(request.result);
+    };
+    request.onerror = fail;
+    request.onblocked = fail;
   });
 }
 
@@ -52,10 +65,23 @@ export async function loadStorageFromIndexedDb(): Promise<StorageEnvelope | null
     const database = await openDatabase();
     return await new Promise((resolve, reject) => {
       const transaction = database.transaction(STORE_NAME, 'readonly');
+      const timer = setTimeout(() => {
+        reject(new Error('IndexedDB 读取超时'));
+        transaction.abort();
+        database.close();
+      }, 3000);
       const request = transaction.objectStore(STORE_NAME).get(RECORD_KEY);
       request.onsuccess = () => resolve(parseEnvelope(request.result));
       request.onerror = () => reject(request.error || new Error('IndexedDB 读取失败'));
-      transaction.oncomplete = () => database.close();
+      const close = () => {
+        clearTimeout(timer);
+        database.close();
+      };
+      transaction.oncomplete = close;
+      transaction.onabort = transaction.onerror = () => {
+        close();
+        reject(transaction.error || new Error('IndexedDB 读取中止'));
+      };
     });
   } catch (error) {
     console.warn('预设助手: 读取 IndexedDB 配置失败', error);

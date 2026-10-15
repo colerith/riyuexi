@@ -916,7 +916,8 @@ $(async () => {
     if (panel?.hasClass('visible')) renderReasoningCheck();
   }, 1500);
 
-  $(window).on('pagehide', () => {
+  window.addEventListener('pagehide', event => {
+    if (event.persisted) return;
     clearInterval(reasoningCheckTimer);
     hidePanel();
     unregisterAutoSwitch?.();
