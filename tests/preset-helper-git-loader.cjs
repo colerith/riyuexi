@@ -83,8 +83,17 @@ const next = entry('1.0.10', 'window.test = 2;');
     return url.includes('fastly') ? 'tampered' : next.code;
   });
   assert.equal(downloaded.sha256, next.sha256);
-  assert.equal(urls.length, 4, 'bad checksum falls back to next mirror');
+  assert.equal(urls.length, 3, 'bad checksum falls back without fetching manifest again');
+  assert.ok(urls[0].startsWith('https://raw.githubusercontent.com/'));
   assert.ok(urls[0].endsWith('main/preset-helper-release-v1.json'));
+  const fallbackUrls = [];
+  const fallback = await api.downloadRelease(async url => {
+    fallbackUrls.push(url);
+    if (url.includes('raw.githubusercontent.com')) throw Error('GitHub blocked');
+    return url.endsWith('.json') ? JSON.stringify(next) : next.code;
+  });
+  assert.equal(fallback.version, next.version);
+  assert.equal(fallbackUrls.length, 3, 'manifest can also fall back to CDN');
   await assert.rejects(
     api.downloadRelease(async () => {
       throw Error('offline');

@@ -42,10 +42,22 @@ async function requestText(url: string) {
 }
 
 export async function downloadRelease(fetchText = requestText): Promise<CacheEntry> {
+  let release: Release | undefined;
+  // CDN 对 main 分支可能触发仓库整体大小限制；清单优先直读 GitHub。
+  // 固定版本主文件仍优先 CDN，清单来源与文件来源独立回退。
+  for (const host of [hosts[2], hosts[0], hosts[1]]) {
+    try {
+      const candidate = JSON.parse(await fetchText(urlFor(host, 'main', 'preset-helper-release-v1.json')));
+      if (!validRelease(candidate)) throw new Error('发布清单无效');
+      release = candidate;
+      break;
+    } catch (error) {
+      console.warn('[预设助手 Git] 发布清单不可用，尝试下一源', host, error);
+    }
+  }
+  if (!release) throw new Error('无法获取发布清单，请检查网络后重新加载脚本');
   for (const host of hosts) {
     try {
-      const release = JSON.parse(await fetchText(urlFor(host, 'main', 'preset-helper-release-v1.json')));
-      if (!validRelease(release)) throw new Error('发布清单无效');
       const code = await fetchText(urlFor(host, `v${release.version}`, `file/index-${release.version}.js`));
       const entry = { ...release, code };
       if (!validCache(entry)) throw new Error('SHA-256 校验失败');
