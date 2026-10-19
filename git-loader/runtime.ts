@@ -8,9 +8,16 @@ const hosts = [
   'https://raw.githubusercontent.com/colerith/riyuexi/',
 ];
 const urlFor = (host: string, revision: string, path: string) => `${host}${revision}/${path}`;
-const revision = (version: string) => Number(version.split('.').pop());
+export function compareVersions(left: string, right: string) {
+  const a = left.split('.').map(Number);
+  const b = right.split('.').map(Number);
+  for (let index = 0; index < 3; index += 1) {
+    if (a[index] !== b[index]) return a[index] - b[index];
+  }
+  return 0;
+}
 const validRelease = (value: any): value is Release =>
-  !!value && /^0\.42\.\d+$/.test(value.version) && /^[a-f0-9]{64}$/.test(value.sha256);
+  !!value && /^1\.0\.(?:0|[1-9]\d*)$/.test(value.version) && /^[a-f0-9]{64}$/.test(value.sha256);
 export const validCache = (value: unknown): value is CacheEntry => {
   const entry = value as CacheEntry;
   return (
@@ -37,7 +44,7 @@ async function requestText(url: string) {
 export async function downloadRelease(fetchText = requestText): Promise<CacheEntry> {
   for (const host of hosts) {
     try {
-      const release = JSON.parse(await fetchText(urlFor(host, 'main', 'preset-helper-release.json')));
+      const release = JSON.parse(await fetchText(urlFor(host, 'main', 'preset-helper-release-v1.json')));
       if (!validRelease(release)) throw new Error('发布清单无效');
       const code = await fetchText(urlFor(host, `v${release.version}`, `file/index-${release.version}.js`));
       const entry = { ...release, code };
@@ -73,7 +80,7 @@ export function scriptCache(write?: CacheEntry): Promise<CacheEntry | null> {
       }
     }, 2000);
     try {
-      const request = indexedDB.open('preset-helper-git-loader', 1);
+      const request = indexedDB.open('preset-helper-git-loader-v1', 1);
       request.onupgradeneeded = () => request.result.createObjectStore('scripts');
       request.onblocked = () => finish(null, new Error('脚本缓存被占用'));
       request.onerror = () => finish(null, request.error);
@@ -131,7 +138,7 @@ export async function loadPresetGit(
     const update = deps
       .download()
       .then(async next => {
-        if (revision(next.version) > revision(current.version)) {
+        if (compareVersions(next.version, current.version) > 0) {
           await deps.save(next);
           console.info('[预设助手 Git] 更新已缓存，下次重载生效：', next.version);
         }

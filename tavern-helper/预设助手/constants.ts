@@ -323,10 +323,11 @@ export const BUILTIN_QUICK_SWITCH_SCHEMES: BuiltinQuickSwitchScheme[] = [
       ],
 
       // 只读取这些前缀，并在面板中隐藏前缀
-      itemPrefixes: ['🎵', '✒️', '🎬'],
+      itemPrefixes: ['🎵', '✒️', '🎬','💬','🙅‍♀️'],
       sectionDescriptions: {
         文风框架: '推荐多选一开，多开文风容易打架',
         文风补丁: '可选，可多开',
+        标点规范: '可选，相同图标只开一个',
         结尾落点: '推荐开启，多选一开',
       },
     },

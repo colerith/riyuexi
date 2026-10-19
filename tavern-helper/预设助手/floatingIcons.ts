@@ -1,6 +1,7 @@
-import riyuexi from './floating-icon.png?url';
-import aurora from './floating-icon-aurora.png?url';
-import ivory from './floating-icon-ivory.png?url';
+// 实际显示 42px，128px 图标足够覆盖高分屏；原图保留用于设计修改。
+import riyuexi from './icons/floating-icon.png?url';
+import aurora from './icons/floating-icon-aurora.png?url';
+import ivory from './icons/floating-icon-ivory.png?url';
 
 export const floatingIcons = {
   riyuexi: { label: '日月西', url: riyuexi },

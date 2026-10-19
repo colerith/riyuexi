@@ -17,10 +17,14 @@ const entry = (version, code = 'window.test = 1;') => ({
   code,
   sha256: createHash('sha256').update(code).digest('hex'),
 });
-const old = entry('0.42.9');
-const next = entry('0.42.10', 'window.test = 2;');
+const old = entry('1.0.9');
+const next = entry('1.0.10', 'window.test = 2;');
 (async () => {
   assert.ok(api.validCache(old));
+  assert.equal(api.validCache(entry('0.42.9')), false, 'legacy cache cannot cross release channels');
+  assert.equal(api.validCache(entry('1.0.01')), false);
+  assert.ok(api.compareVersions('1.0.10', '1.0.9') > 0);
+  assert.ok(api.compareVersions('1.0.0', '0.42.99') > 0);
   assert.equal(api.validCache({ ...old, code: 'tampered' }), false);
   let ran = [],
     saved = [];
@@ -44,7 +48,7 @@ const next = entry('0.42.10', 'window.test = 2;');
   });
   await offline.update;
   assert.deepEqual(ran, [old]);
-  const downgrade = await api.loadPresetGit({ ...deps, download: async () => entry('0.42.8') });
+  const downgrade = await api.loadPresetGit({ ...deps, download: async () => entry('1.0.8') });
   await downgrade.update;
   assert.equal(saved.length, 0);
   ran = [];
@@ -80,6 +84,7 @@ const next = entry('0.42.10', 'window.test = 2;');
   });
   assert.equal(downloaded.sha256, next.sha256);
   assert.equal(urls.length, 4, 'bad checksum falls back to next mirror');
+  assert.ok(urls[0].endsWith('main/preset-helper-release-v1.json'));
   await assert.rejects(
     api.downloadRelease(async () => {
       throw Error('offline');
