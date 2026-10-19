@@ -13,9 +13,10 @@ const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
 const ts = require('typescript');
 const folder = process.argv[2] || 'file';
-const manifest = fs.existsSync(`${folder}/preset-helper-release-v1.json`)
-  ? `${folder}/preset-helper-release-v1.json`
-  : path.join(folder, '..', 'preset-helper-release-v1.json');
+const manifestName = process.argv[3] || 'preset-helper-release-v1.json';
+const manifest = fs.existsSync(`${folder}/${manifestName}`)
+  ? `${folder}/${manifestName}`
+  : path.join(folder, '..', manifestName);
 const release = JSON.parse(fs.readFileSync(manifest, 'utf8'));
 const artifact = (kind, ext) => {
   const plain = `${folder}/preset-helper-${kind}.${ext}`;

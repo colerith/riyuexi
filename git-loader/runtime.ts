@@ -1,5 +1,9 @@
 import { sha256 } from '@noble/hashes/sha2.js';
 
+declare const PRESET_EDITION: string;
+const edition = typeof PRESET_EDITION === 'undefined' ? '1.0' : PRESET_EDITION;
+const channel = edition === '0.42' ? 'v042' : 'v1';
+
 export type Release = { version: string; sha256: string };
 export type CacheEntry = Release & { code: string };
 const hosts = [
@@ -17,7 +21,9 @@ export function compareVersions(left: string, right: string) {
   return 0;
 }
 const validRelease = (value: any): value is Release =>
-  !!value && /^1\.0\.(?:0|[1-9]\d*)$/.test(value.version) && /^[a-f0-9]{64}$/.test(value.sha256);
+  !!value &&
+  (edition === '0.42' ? /^0\.42\.(?:0|[1-9]\d*)$/ : /^1\.0\.(?:0|[1-9]\d*)$/).test(value.version) &&
+  /^[a-f0-9]{64}$/.test(value.sha256);
 export const validCache = (value: unknown): value is CacheEntry => {
   const entry = value as CacheEntry;
   return (
@@ -47,7 +53,7 @@ export async function downloadRelease(fetchText = requestText): Promise<CacheEnt
   // 固定版本主文件仍优先 CDN，清单来源与文件来源独立回退。
   for (const host of [hosts[2], hosts[0], hosts[1]]) {
     try {
-      const candidate = JSON.parse(await fetchText(urlFor(host, 'main', 'preset-helper-release-v1.json')));
+      const candidate = JSON.parse(await fetchText(urlFor(host, 'main', `preset-helper-release-${channel}.json`)));
       if (!validRelease(candidate)) throw new Error('发布清单无效');
       release = candidate;
       break;
@@ -92,7 +98,7 @@ export function scriptCache(write?: CacheEntry): Promise<CacheEntry | null> {
       }
     }, 2000);
     try {
-      const request = indexedDB.open('preset-helper-git-loader-v1', 1);
+      const request = indexedDB.open(`preset-helper-git-loader-${channel}`, 1);
       request.onupgradeneeded = () => request.result.createObjectStore('scripts');
       request.onblocked = () => finish(null, new Error('脚本缓存被占用'));
       request.onerror = () => finish(null, request.error);

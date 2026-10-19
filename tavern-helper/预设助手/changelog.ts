@@ -1,3 +1,8 @@
+import { newChangelogs } from './changelogs/entries';
+
+declare const PRESET_EDITION: string;
+const edition = typeof PRESET_EDITION === 'undefined' ? '1.0' : PRESET_EDITION;
+
 export interface ChangelogEntry {
   version: string;
   title: string;
@@ -5,9 +10,10 @@ export interface ChangelogEntry {
   bodyHtml: string;
 }
 
-export const CURRENT_CHANGELOG_VERSION = '0.41';
+export const CURRENT_CHANGELOG_VERSION = edition;
 
 export const CHANGELOGS: ChangelogEntry[] = [
+  ...newChangelogs.filter(entry => edition === '1.0' || entry.version === '0.42'),
   {
     version: '0.41',
     title: '⚖️日月西 更新日志 |',
