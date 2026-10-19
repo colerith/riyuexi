@@ -178,6 +178,19 @@ export const panelHtml = `
                             <i class="fas fa-exclamation-circle"></i>
                             <b>Flash 模型和 Pro 模型的配置不同，本指南必看！不按要求配置必报错！</b>
                         </div>
+                        ${
+                          CURRENT_CHANGELOG_VERSION === '1.0'
+                            ? `<details class="help-faq is-critical" open>
+                            <summary><span>4 Argon 食用指南</span><span class="help-tag tag-must">必看</span></summary>
+                            <div class="help-answer">
+                                <ol>
+                                    <li>和3.8f一样都是不支持预填充和不吃参数的，思维链还是<code>&lt;electric&gt;</code>和<code>&lt;/electric&gt;</code></li>
+                                    <li>建议优先选择vertex渠道的4a，如果只能玩pg渠道、反重力之类的，直球nsfw、开袋即食可能不太行，必须拐弯抹角地引导4a开车，破限可以直接使用【自定义混淆】按说明填充，我不太清楚日月西是不是被标记了，如果有路由之类的情况可以自己再调整一下【万物诞生】，不过我目前是用到没问题的因为本身已经是随机头部了</li>
+                                </ol>
+                            </div>
+                        </details>`
+                            : ''
+                        }
                         <details class="help-faq is-critical" open>
                             <summary><span>3.8、3.7、3.6、3.5 Flash 配置说明</span><span class="help-tag tag-must">必看</span></summary>
                             <div class="help-answer">
