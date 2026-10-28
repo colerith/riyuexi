@@ -1,4 +1,5 @@
 import { createPromptStateWriter } from './presetWrite';
+import { registerToolInput, type ToolInputMode } from './toolInput';
 import { bindMewoSummary } from './mewoSummary';
 import { handleQuickRequest, quickRequestActions, summaryActions } from './actions';
 import { injectSettingsToAI } from './ai';
@@ -104,6 +105,64 @@ let panelOpening: Promise<void> | null = null;
 let panelCloseTimer: ReturnType<typeof setTimeout> | undefined;
 let quickReplyFallback = false;
 let unregisterPanelViewportSync: (() => void) | null = null;
+let toolInputController: Awaited<ReturnType<typeof registerToolInput>> | null = null;
+let toolInputDisposed = false;
+let toolInputError = '';
+
+function renderToolInputSettings() {
+  if (!panel) return;
+  const state = toolInputController?.getState();
+  panel
+    .find('[data-tool-input-toggle]')
+    .attr('aria-checked', String(state ? state.mode !== 'off' : storage.toolInputEnabled === true))
+    .prop('disabled', !state || state.busy > 0);
+  panel
+    .find('#panel-tool-input-mode')
+    .val(storage.toolInputMode === 'two-stage' ? 'two-stage' : 'single-shot')
+    .prop('disabled', !state || state.busy > 0);
+  panel
+    .find('[data-tool-input-status]')
+    .text(
+      toolInputError ||
+        (state
+          ? `${state.mode === 'off' ? '已关闭' : state.mode === 'two-stage' ? '两阶段已开启' : '单次已开启'} · ${toolInputController!.describeLast()} · 本次载入已处理 ${state.count} 次`
+          : '正在初始化工具读取…'),
+    );
+}
+
+async function initializeToolInput() {
+  try {
+    toolInputController = await registerToolInput({
+      mode:
+        storage.toolInputEnabled === true
+          ? storage.toolInputMode === 'two-stage'
+            ? 'two-stage'
+            : 'single-shot'
+          : 'off',
+      isDisposed: () => toolInputDisposed,
+      onModeChange: mode => {
+        storage.toolInputEnabled = mode !== 'off';
+        if (mode !== 'off') storage.toolInputMode = mode;
+        saveStorage();
+      },
+      onStatusChange: renderToolInputSettings,
+    });
+  } catch (error) {
+    toolInputError = '工具读取初始化失败，请重新加载脚本。';
+    console.warn('预设助手[工具读取]: 初始化失败', error);
+  }
+  renderToolInputSettings();
+}
+
+function setToolInputMode(mode: ToolInputMode) {
+  try {
+    if (!toolInputController) return;
+    toolInputController.setMode(mode);
+  } catch (error) {
+    toastr.warning(error instanceof Error ? error.message : String(error));
+  }
+  renderToolInputSettings();
+}
 
 function syncNsfwEntryIndicators(status: NsfwRuntimeStatus) {
   controlButtonController?.setNsfwActive(status.active);
@@ -412,6 +471,7 @@ function renderReasoningCheck() {
 
 function renderAutomationSettings() {
   if (!panel) return;
+  renderToolInputSettings();
   panel
     .find('[data-automation="reasoningFormattingEnabled"]')
     .attr('aria-checked', String(storage.reasoningFormattingEnabled !== false));
@@ -574,6 +634,21 @@ function bindPanelEvents() {
     storage.floatingIcon = normalizeFloatingIcon($(event.currentTarget).val());
     saveStorage();
     syncPanelEntries();
+  });
+  panel.on('click', '[data-tool-input-toggle]', () => {
+    const enabled = toolInputController?.getState().mode !== 'off';
+    setToolInputMode(enabled ? 'off' : storage.toolInputMode === 'two-stage' ? 'two-stage' : 'single-shot');
+  });
+  panel.on('change', '#panel-tool-input-mode', event => {
+    const mode = String($(event.currentTarget).val());
+    if (mode !== 'single-shot' && mode !== 'two-stage') return;
+    if (toolInputController?.getState().mode === 'off') {
+      storage.toolInputMode = mode;
+      saveStorage();
+      renderToolInputSettings();
+    } else {
+      setToolInputMode(mode);
+    }
   });
   panel.on('click', '[data-automation]', async event => {
     const key = $(event.currentTarget).attr('data-automation') as 'reasoningFormattingEnabled' | 'mvuAutoEnabled';
@@ -920,13 +995,20 @@ $(async () => {
   });
 
   void initializeOptionalFeatures();
+  void initializeToolInput();
 
   const reasoningCheckTimer = setInterval(() => {
-    if (panel?.hasClass('visible')) renderReasoningCheck();
+    if (panel?.hasClass('visible')) {
+      renderReasoningCheck();
+      renderToolInputSettings();
+    }
   }, 1500);
 
   window.addEventListener('pagehide', event => {
     if (event.persisted) return;
+    toolInputDisposed = true;
+    toolInputController?.dispose();
+    toolInputController = null;
     clearInterval(reasoningCheckTimer);
     mewoSummaryController?.dispose();
     mewoSummaryController = null;

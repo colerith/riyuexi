@@ -80,6 +80,8 @@ const notify = () => dom.window.dispatchEvent(new dom.window.Event('mewo-large-s
   assert.equal(runs, 0, 'status never generates');
   click('settings');
   assert.equal(tabClicks, 1);
+  assert.equal(panel.find('[data-mewo-workspace-title]').text(), '总结配置');
+  assert.equal(button('toggle').find('svg.summary-icon').length, 1, 'status refresh preserves inline icon');
   assert.equal(root[0].parentElement, panel.find('[data-mewo-mount]')[0]);
   panel.find('.back-button').trigger('click');
   assert.equal(root[0].parentElement.id, 'home');
@@ -106,6 +108,8 @@ const notify = () => dom.window.dispatchEvent(new dom.window.Event('mewo-large-s
   click('toggle');
   await tick();
   assert.equal(state.enabled, false);
+  assert.equal(button('toggle').find('[data-mewo-toggle-label]').text(), '启用大总结');
+  assert.equal(button('toggle').find('svg.summary-icon').length, 1, 'enable toggle does not erase icon');
   assert.equal(button('merged').prop('disabled'), true);
   assert.equal(button('settings').prop('disabled'), false);
   refuseMount = true;

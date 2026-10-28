@@ -30,7 +30,7 @@ export const panelHtml = `
                 <div class="panel-content summary-content">
                     ${mewoSummaryHtml}
                     <section class="summary-legacy">
-                    <h3>预设总结与大纲</h3>
+                    <div class="summary-section-title" role="heading" aria-level="3">预设总结与大纲</div>
                     <p class="setting-help">以下指令在聊天中生成内容；总结需切换至总结模式，大纲需切换至大纲模式。</p>
                     <div class="button-grid-2">
                     <button data-action="summarize_full"><i class="fas fa-book-open"></i> 总结全文</button>
@@ -138,6 +138,21 @@ export const panelHtml = `
                             <div><strong>MVU 卡自动开启变量提醒</strong><small>默认开启，根据角色卡识别同步 MVU变量条目。关闭后停止自动切换，保留条目当前状态。</small></div>
                             <button class="panel-setting-switch" type="button" role="switch" aria-label="MVU 自动提醒" data-automation="mvuAutoEnabled" aria-checked="true"><span></span></button>
                         </div>
+                    </section>
+                    <section class="panel-settings-card">
+                        <div class="panel-setting-row">
+                            <div><strong>工具调用开关</strong><small>默认关闭。将本轮输入作为工具读取结果发送，只改请求副本，不修改聊天原文。</small></div>
+                            <button class="panel-setting-switch" type="button" role="switch" aria-label="工具调用开关" data-tool-input-toggle aria-checked="false"><span></span></button>
+                        </div>
+                        <div class="panel-theme-mode-field">
+                            <label for="panel-tool-input-mode">工具读取模式</label>
+                            <select id="panel-tool-input-mode" aria-label="工具读取模式">
+                                <option value="single-shot">单次 · 每轮一次请求</option>
+                                <option value="two-stage">两阶段 · 每轮多一次请求</option>
+                            </select>
+                            <small>两阶段仅支持 OpenAI、自定义 OpenAI 兼容和 OpenRouter。预填充、其他工具或不兼容模型等情况会跳过处理并提示原因。</small>
+                        </div>
+                        <p class="panel-settings-note" data-tool-input-status role="status" aria-live="polite"></p>
                     </section>
                     <section class="panel-settings-card">
                         <div class="setting-group-title panel-settings-title">外观</div>
