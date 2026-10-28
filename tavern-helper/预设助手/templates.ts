@@ -1,4 +1,5 @@
 import { CURRENT_CHANGELOG_VERSION } from './changelog';
+import { mewoSummaryCss, mewoSummaryHtml } from './mewoSummary';
 
 export const panelHtml = `
     <div id="control-panel-container">
@@ -26,7 +27,12 @@ export const panelHtml = `
                     <div class="header-title">总结控制</div>
                     <button class="close-button"><i class="fas fa-times"></i></button>
                 </header>
-                <div class="panel-content button-grid-2">
+                <div class="panel-content summary-content">
+                    ${mewoSummaryHtml}
+                    <section class="summary-legacy">
+                    <h3>预设总结与大纲</h3>
+                    <p class="setting-help">以下指令在聊天中生成内容；总结需切换至总结模式，大纲需切换至大纲模式。</p>
+                    <div class="button-grid-2">
                     <button data-action="summarize_full"><i class="fas fa-book-open"></i> 总结全文</button>
                     <button data-action="summarize_chapter"><i class="fas fa-file-signature"></i> 总结本章</button>
                     <button data-action="build_outline"><i class="fas fa-drafting-compass"></i> 构建大纲</button>
@@ -37,6 +43,8 @@ export const panelHtml = `
                     <button data-action="hide_keep_last_3"><i class="fas fa-compress"></i> 保留最近3层</button>
                     <button data-action="hide_keep_last_5"><i class="fas fa-compress-arrows-alt"></i> 保留最近5层</button>
                     <button data-action="hide_previous_except_story_summary"><i class="fas fa-bookmark"></i> 前文仅保留总结</button>
+                    </div>
+                    </section>
                 </div>
             </div>
             <div class="panel-child" data-panel-id="requests">
@@ -455,6 +463,7 @@ export const welcomeHtml = `
 `;
 
 export const panelCss = `
+${mewoSummaryCss}
     @import url('https://fonts.googleapis.com/css2?family=Source+Han+Sans+SC:wght@400;500;700&display=swap');
     :root {
       --font-main: 'Source Han Sans SC', sans-serif;

@@ -1,4 +1,5 @@
 import { createPromptStateWriter } from './presetWrite';
+import { bindMewoSummary } from './mewoSummary';
 import { handleQuickRequest, quickRequestActions, summaryActions } from './actions';
 import { injectSettingsToAI } from './ai';
 import {
@@ -90,6 +91,7 @@ let tempThinkingStyle: 'conventional' | 'minimalist' | null = null;
 // 3. 注册主按钮 & UI 管理
 // ============================================================
 let panel: JQuery<HTMLElement> | null = null;
+let mewoSummaryController: ReturnType<typeof bindMewoSummary> | null = null;
 let styleTag: JQuery<HTMLElement> | null = null;
 let controlButtonController: ControlButtonController | null = null;
 let hostEntryController: HostEntryController | null = null;
@@ -234,6 +236,8 @@ async function showPanel(showPresetsFirst = false) {
   if (panelOpening) return panelOpening;
   panelOpening = createOrShowPanel(showPresetsFirst)
     .catch(error => {
+      mewoSummaryController?.dispose();
+      mewoSummaryController = null;
       panel?.remove();
       panel = null;
       unregisterPanelViewportSync?.();
@@ -371,9 +375,12 @@ function hidePanel() {
   clearTimeout(panelCloseTimer);
   const closingPanel = panel;
   if (!closingPanel) return;
+  mewoSummaryController?.unmount();
   closingPanel.removeClass('visible');
   panelCloseTimer = setTimeout(() => {
     if (panel !== closingPanel || closingPanel.hasClass('visible')) return;
+    mewoSummaryController?.dispose();
+    mewoSummaryController = null;
     closingPanel.remove();
     panel = null;
     unregisterPanelViewportSync?.();
@@ -506,6 +513,8 @@ function bindPanelEvents() {
   });
 
   panel.find('.close-button').on('click', hidePanel);
+  mewoSummaryController?.dispose();
+  mewoSummaryController = bindMewoSummary(panel);
   renderPanelEntrySettings();
   panel.on('click', '[data-nsfw-home-mode]', async event => {
     event.preventDefault();
@@ -919,6 +928,8 @@ $(async () => {
   window.addEventListener('pagehide', event => {
     if (event.persisted) return;
     clearInterval(reasoningCheckTimer);
+    mewoSummaryController?.dispose();
+    mewoSummaryController = null;
     hidePanel();
     unregisterAutoSwitch?.();
     unregisterAutoSwitch = null;
