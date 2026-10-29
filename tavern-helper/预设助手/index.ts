@@ -148,7 +148,7 @@ async function initializeToolInput() {
       onStatusChange: renderToolInputSettings,
     });
   } catch (error) {
-    toolInputError = '工具读取初始化失败，请重新加载脚本。';
+    toolInputError = `工具读取不可用：${error instanceof Error ? error.message : String(error)}`;
     console.warn('预设助手[工具读取]: 初始化失败', error);
   }
   renderToolInputSettings();

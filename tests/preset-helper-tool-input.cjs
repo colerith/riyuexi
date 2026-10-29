@@ -79,6 +79,28 @@ async function setup(mode = 'single-shot', fetchImpl = async () => new Response(
 }
 
 (async () => {
+  const compatible = await setup();
+  compatible.controller.dispose();
+  compatible.host.SillyTavern = compatible.ctx;
+  compatible.host.Function = () => {
+    throw Error('Internal imports blocked');
+  };
+  compatible.host.crypto = undefined;
+  const publicController = await exportsObject.registerToolInput({
+    host: compatible.host,
+    mode: 'single-shot',
+    onModeChange() {},
+  });
+  const publicRequest = compatible.run(compatible.request());
+  assert.equal(publicRequest.messages.find(message => message.role === 'tool').content, '真实输入');
+  assert.equal(publicRequest.messages.at(-1).content, '尾部规则');
+  const repeated = compatible.request();
+  repeated.messages.push({ role: 'user', content: '真实输入' });
+  const originalRepeated = clone(repeated);
+  compatible.run(repeated);
+  assert.deepEqual(repeated, originalRepeated, 'unidentified ambiguous input must remain untouched');
+  publicController.dispose();
+  assert.equal(compatible.bus.eventNames().length, 0);
   const s = await setup();
   const before = clone(s.flat),
     data = s.run(s.request());

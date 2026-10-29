@@ -51,16 +51,20 @@ export async function downloadRelease(fetchText = requestText): Promise<CacheEnt
   let release: Release | undefined;
   // CDN 对 main 分支可能触发仓库整体大小限制；清单优先直读 GitHub。
   // 固定版本主文件仍优先 CDN，清单来源与文件来源独立回退。
-  for (const host of [hosts[2], hosts[0], hosts[1]]) {
-    try {
-      const candidate = JSON.parse(await fetchText(urlFor(host, 'main', `preset-helper-release-${channel}.json`)));
-      if (!validRelease(candidate)) throw new Error('发布清单无效');
-      release = candidate;
-      break;
-    } catch (error) {
-      console.warn('[预设助手 Git] 发布清单不可用，尝试下一源', host, error);
-    }
-  }
+  await Promise.all(
+    [hosts[2], hosts[0], hosts[1]].map(async host => {
+      try {
+        const revision = host === hosts[2] ? 'refs/heads/main' : 'main';
+        const candidate = JSON.parse(
+          await fetchText(`${urlFor(host, revision, `preset-helper-release-${channel}.json`)}?t=${Date.now()}`),
+        );
+        if (!validRelease(candidate)) throw new Error('发布清单无效');
+        if (!release || compareVersions(candidate.version, release.version) > 0) release = candidate;
+      } catch (error) {
+        console.warn('[预设助手 Git] 发布清单不可用，尝试下一源', host, error);
+      }
+    }),
+  );
   if (!release) throw new Error('无法获取发布清单，请检查网络后重新加载脚本');
   for (const host of hosts) {
     try {

@@ -36,9 +36,16 @@ export async function registerToolInput(options: ToolInputOptions) {
   const SKIP_SIGNATURE = 'skip_thought_signature_validator';
   const TIMEOUT = 180000;
 
-  const ctx = host.SillyTavern.getContext();
-  // 在宿主里 import，拿到正在用的 PromptManager 实例，而不是第二份模块。
-  const oai = options.openai ?? (await host.Function('return import("/scripts/openai.js")')());
+  // 酒馆助手可能直接暴露上下文；不动态导入酒馆内部模块，也不使用 Function/eval。
+  const getContext = () => {
+    const tavern = host.SillyTavern ?? (typeof SillyTavern !== 'undefined' ? SillyTavern : undefined);
+    return typeof tavern?.getContext === 'function' ? tavern.getContext() : tavern;
+  };
+  const ctx = getContext();
+  if (!ctx?.eventSource?.on || !ctx?.eventTypes?.CHAT_COMPLETION_SETTINGS_READY) {
+    throw new Error('当前酒馆未提供聊天请求事件，工具读取不可用。');
+  }
+  const oai = options.openai;
   if (options.isDisposed?.()) throw new Error('工具调用初始化已取消');
   host[API]?.dispose();
 
@@ -54,7 +61,16 @@ export async function registerToolInput(options: ToolInputOptions) {
 
   const clone = (value: any) => JSON.parse(JSON.stringify(value));
   const key = (message: any) => JSON.stringify([message.role, message.content, message.name || '']);
-  const randomHex = () => host.crypto.randomUUID().replace(/-/g, '');
+  const randomHex = () => {
+    if (host.crypto?.randomUUID) return host.crypto.randomUUID().replace(/-/g, '');
+    if (host.crypto?.getRandomValues) {
+      return Array.from(host.crypto.getRandomValues(new Uint8Array(16)) as Uint8Array, byte =>
+        byte.toString(16).padStart(2, '0'),
+      ).join('');
+    }
+    return `${Date.now().toString(16)}${(++requestSequence).toString(16)}${Math.random().toString(16).slice(2)}`;
+  };
+  let requestSequence = 0;
   class Skip extends Error {}
   const skip = (message: any) => {
     throw new Skip(message);
@@ -92,7 +108,7 @@ export async function registerToolInput(options: ToolInputOptions) {
       if (Array.isArray(node?.collection)) node.collection.forEach(walk);
       else if (node && (node.content || node.tool_calls)) flat.push(node);
     };
-    walk(oai.promptManager?.messages);
+    walk(oai?.promptManager?.messages);
     return flat;
   }
   // 提示词组装完（非干跑）那一刻记下结构。之后别的插件/界面可能再做干跑（数 token、滑动时刷新），
@@ -101,13 +117,14 @@ export async function registerToolInput(options: ToolInputOptions) {
   let lastSnapshot: any[] | null = null;
   function onPromptReady(event: any) {
     if (disposed || !event || event.dryRun) return;
-    const flat = flatPrompt();
+    const managed = flatPrompt();
+    const flat = managed.length ? managed : Array.isArray(event.chat) ? clone(event.chat) : [];
     lastSnapshot = flat;
     if (Array.isArray(event.chat)) snapshots.set(event.chat, flat);
   }
   // 本轮真正的用户输入：酒馆聊天记录里最后一条非系统消息（滑动时去掉正在重写的那条）。
   function realInput(type: string): { role: 'user'; text: string } | { role: 'assistant' } | null {
-    const list = (ctx.chat || []).filter((m: any) => m && !m.is_system);
+    const list = (getContext()?.chat || []).filter((m: any) => m && !m.is_system);
     if (type === 'swipe') list.pop();
     const last = list.at(-1);
     if (!last) return null;
@@ -117,7 +134,7 @@ export async function registerToolInput(options: ToolInputOptions) {
   // 所以不能取最后一条 chatHistory：按真实输入的文字去认，并排除这些注入词条。
   function injectedHeads() {
     const heads = [];
-    for (const p of ctx.chatCompletionSettings?.prompts || []) {
+    for (const p of getContext()?.chatCompletionSettings?.prompts || []) {
       if (p?.injection_position !== 1 || !p.content) continue;
       let text = String(p.content);
       try {
@@ -132,8 +149,8 @@ export async function registerToolInput(options: ToolInputOptions) {
   }
   function locate(messages: any, type: any) {
     const flat = snapshots.get(messages) || lastSnapshot || flatPrompt();
-    const history = flat.filter((m: any) => /^chatHistory-\d+$/.test(m.identifier));
-    if (!history.length) skip('找不到聊天记录在请求里的位置（酒馆版本或提示词管理器不同）。');
+    const identified = flat.filter((m: any) => /^chatHistory-\d+$/.test(m.identifier));
+    const history = identified.length ? identified : flat.length ? flat : messages;
     const real = realInput(type);
     if (!real || real.role !== 'user') {
       lastChatRole = real ? 'assistant' : 'none';
@@ -154,10 +171,14 @@ export async function registerToolInput(options: ToolInputOptions) {
     const body = (m: any) => textOf(m.content).trim();
     const named = (m: any, v: any) =>
       body(m).endsWith(v) && /^[^\n]{1,40}[:：]\s*$/.test(body(m).slice(0, body(m).length - v.length));
+    const exact = users.filter((m: any) => body(m) === raw || body(m) === sub);
+    const namedMatches = users.filter((m: any) => named(m, raw) || named(m, sub));
+    const candidates = exact.length ? exact : namedMatches;
+    if (!identified.length && candidates.length > 1) skip('本轮输入与其他提示词重复，无法唯一定位，保留原请求。');
+    // 无内部标识时只接受完整文字或角色名前缀匹配，避免将引用原文的尾部指令误当输入。
     const hit =
-      users.find((m: any) => body(m) === raw || body(m) === sub) ||
-      users.find((m: any) => named(m, raw) || named(m, sub)) ||
-      users.find((m: any) => body(m).includes(sub) || body(m).includes(raw));
+      candidates[0] ||
+      (identified.length ? users.find((m: any) => body(m).includes(sub) || body(m).includes(raw)) : undefined);
     if (!hit) skip('在提示词里找不到本轮输入（可能被正则或宏改写了）。');
     const index = flat.indexOf(hit);
     if (messages.length === flat.length && key(messages[index]) === key(hit)) return index;
