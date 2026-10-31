@@ -1,0 +1,35 @@
+{
+  "version": "1.3.4",
+  "avatars": 320,
+  "sha256": "d99d082ff89d63d0387ebfd379b47fd1ebfb43e9c1239aabb64d3504809e4c35",
+  "files": {
+    "index-1.3.4.js": {
+      "bytes": 676926,
+      "sha256": "d99d082ff89d63d0387ebfd379b47fd1ebfb43e9c1239aabb64d3504809e4c35"
+    },
+    "novel-comments-local.js": {
+      "bytes": 676926,
+      "sha256": "d99d082ff89d63d0387ebfd379b47fd1ebfb43e9c1239aabb64d3504809e4c35"
+    },
+    "novel-comments-local.json": {
+      "bytes": 681514,
+      "sha256": "a4631d8836f2c926fe5ae98f674f0b44e48f7bdbce34dd44d8d241ffa9d1aca5"
+    },
+    "novel-comments-network.js": {
+      "bytes": 112,
+      "sha256": "6c0b8644463e18c8b0c77734feb7daf3860871c45c2a9fc625c4ce35cbf0bcb8"
+    },
+    "novel-comments-network.json": {
+      "bytes": 617,
+      "sha256": "a8a1124d01115430b926e8f2745a38184adc9b39a0c05953857116d5524b096b"
+    },
+    "提示词.txt": {
+      "bytes": 1936,
+      "sha256": "24330352e87bd65b3833260b4da0c971f9d67b0e4c94aede67767a0cf5da8ead"
+    },
+    "AVATAR-LICENSE.txt": {
+      "bytes": 3662,
+      "sha256": "16a703699d02b80a5f4bfc3462b2ce22e57f9659da48bb5d1c0fab2b0197d510"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-// 纸间 · 小说段评 v1.3.3（评论互动版）
+// 纸间 · 小说段评 v1.3.4（评论互动版）
 // MIT; locally bundled, no CDN or message writes.
 // 蓝图版改动：跟随蓝图全局美化（空明 / 格子图纸 · 日夜 · 省电）；阅读面板不再全屏——
 // 宽屏是贴着气泡的浮卡，窄屏是底部半屏抽屉，点空白、下滑、Esc 都能关；只盯 #chat，生成期间延后渲染，结束后合并更新。
@@ -962,21 +962,6 @@ function createUI({
     layer.classList.toggle('as-pop', mode === 'pop');
     panel.style.left = panel.style.top = panel.style.width = panel.style.maxHeight = panel.style.transform = '';
     panel.style.height = '';
-    if (isExpanded) {
-      const edge = 12;
-      const width = Math.min(760, win.innerWidth - edge * 2);
-      const height = Math.min(820, (win.visualViewport?.height || win.innerHeight) - edge * 2);
-      panel.style.width = width + 'px';
-      panel.style.height = panel.style.maxHeight = height + 'px';
-      panel.style.left = Math.max(edge, (win.innerWidth - width) / 2) + 'px';
-      panel.style.top =
-        Math.max(
-          edge,
-          ((win.visualViewport?.height || win.innerHeight) - height) / 2 + (win.visualViewport?.offsetTop || 0),
-        ) + 'px';
-      panel.dataset.side = 'center';
-      return;
-    }
     if (mode === 'sheet') return;
     const vw = win.innerWidth,
       vh = win.innerHeight,
@@ -987,7 +972,7 @@ function createUI({
     panel.style.width = `${width}px`;
     const trigger = active?.kind === 'comments' ? active.trigger : null;
     const r = trigger?.isConnected ? trigger.getBoundingClientRect() : null;
-    if (!r || r.bottom < 0 || r.top > vh || (!r.width && !r.height)) {
+    if (isExpanded || !r || r.bottom < 0 || r.top > vh || (!r.width && !r.height)) {
       const mh = Math.min(cap + 40, vh - edge * 4);
       panel.style.maxHeight = `${mh}px`;
       panel.style.left = `${Math.round((vw - width) / 2)}px`;
