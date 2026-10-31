@@ -1,4 +1,4 @@
-// 纸间 · 小说段评 v1.3.1（评论互动版）
+// 纸间 · 小说段评 v1.3.2（评论互动版）
 // MIT; locally bundled, no CDN or message writes.
 // 蓝图版改动：跟随蓝图全局美化（空明 / 格子图纸 · 日夜 · 省电）；阅读面板不再全屏——
 // 宽屏是贴着气泡的浮卡，窄屏是底部半屏抽屉，点空白、下滑、Esc 都能关；只盯 #chat，生成期间延后渲染，结束后合并更新。
@@ -307,6 +307,29 @@ function effectiveMode(
 }
 
 // ── themes ──
+const ORNAMENT_TITLES = {
+  riyuexi: {
+    day: {
+      name: '𝒜𝓂𝒶𝓉ℯ𝓇𝒶𝓈𝓊',
+      subtitle: '𝒟𝒶𝓌𝓃 ℬ𝓇𝒾𝓁𝓁𝒾𝒶𝓃𝒸ℯ',
+    },
+    night: {
+      name: '𝕿𝖘𝖚𝖐𝖚𝖞𝖔𝖒𝖎',
+      subtitle: '𝕾𝖎𝖑𝖊𝖓𝖙 𝕸𝖔𝖔𝖓',
+    },
+  },
+  jelly: {
+    day: {
+      name: '𝒜𝓊𝓇ℯ𝓁𝒾𝒶',
+      subtitle: '𝒟𝓇ℯ𝒶𝓂𝓎 𝒥ℯ𝓁𝓁𝓎𝒻𝒾𝓈𝒽',
+    },
+    night: {
+      name: '𝕻𝖆𝖕𝖎𝖑𝖎𝖔',
+      subtitle: '𝖂𝖎𝖙𝖍𝖊𝖗𝖊𝖉 𝕭𝖚𝖙𝖙𝖊𝖗𝖋𝖑𝖞',
+    },
+  },
+} as const;
+
 const DUAL_PALETTES = {
   riyuexi: {
     day: { accent: '#d85c3b', paper: '#fdf6ee', ink: '#4a3424', wash: '#fffaf5', muted: '#937158', line: '#dfc99c' },
@@ -1038,7 +1061,17 @@ function createUI({
     const grip = make('div', 'grip');
     grip.setAttribute('aria-hidden', 'true');
     const head = make('header', 'panel-head');
-    head.append(make('h2', '', title));
+    const heading = make('h2', '', title);
+    if (!isSettings && isDualSkin(skin)) {
+      const wording = ORNAMENT_TITLES[skin][effectiveMode(getSettings(), win, skin)];
+      heading.className = 'ornament-title';
+      heading.setAttribute('aria-label', (wording.name + ' · ' + wording.subtitle).normalize('NFKC'));
+      heading.replaceChildren(
+        make('span', 'ornament-name', wording.name),
+        make('span', 'ornament-subtitle', wording.subtitle),
+      );
+    }
+    head.append(heading);
     const close = button('', 'icon-button close', () => closePanel(), 'close');
     close.append(icon('close'));
     close.setAttribute('aria-label', '关闭');

@@ -2437,3 +2437,75 @@ select:focus-visible {
   ) {
   font-family: var(--hc-font);
 }
+
+/* 统一阅读节奏：间距由容器负责，避免标签外边距叠加首条评论内边距。 */
+.panel.reading .reading-body {
+  padding: 18px 24px 20px;
+}
+.panel.reading .comment-sort {
+  padding-inline: 24px;
+}
+.panel.reading .tags {
+  margin: 12px 0 0;
+  gap: 6px 8px;
+}
+.panel.reading .tags:empty {
+  display: none;
+}
+.panel.reading .comment-list > .community-reader:first-child {
+  padding-top: 18px;
+}
+.panel.skin-night.reading .reading-body {
+  padding: 0;
+}
+.panel.skin-night.reading .intro {
+  padding: 18px 24px;
+}
+.panel.skin-night.reading .comment-list {
+  padding: 0 24px 20px;
+}
+@media (max-width: 600px) {
+  .panel.reading .reading-body {
+    padding: 16px 18px 18px;
+  }
+  .panel.reading .comment-sort {
+    padding-inline: 18px;
+  }
+  .panel.skin-night.reading .reading-body {
+    padding: 0;
+  }
+  .panel.skin-night.reading .intro {
+    padding: 16px 18px 0;
+    border-bottom: 0;
+  }
+  .panel.skin-night.reading .comment-list {
+    padding: 0 18px 18px;
+  }
+}
+
+.panel.reading .panel-head .ornament-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  letter-spacing: 0;
+  font-weight: 400;
+  line-height: 1.25;
+}
+.ornament-name {
+  font-size: 25px;
+  color: var(--hc-ink);
+}
+.ornament-subtitle {
+  font-size: 11px;
+  color: var(--hc-muted);
+  line-height: 1.5;
+}
+@media (max-width: 600px) {
+  .ornament-name {
+    font-size: 23px;
+  }
+  .ornament-subtitle {
+    font-size: 10px;
+  }
+}
