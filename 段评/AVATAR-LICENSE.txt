@@ -1,44 +1,44 @@
-320 embedded WebP portraits / 8 styles / 40 per style.
+320 WebP portraits / 8 external atlases / 40 per style.
 
 Open Peeps — Pablo Stanley
 Original: https://www.openpeeps.com/
 License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
-Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP for local use.
+Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP in versioned external sprite atlases.
 
 Notionists — Zoish
 Original: https://heyzoish.gumroad.com/l/notionists
 License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
-Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP for local use.
+Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP in versioned external sprite atlases.
 
 Pixel Art — DiceBear
 Original: https://www.figma.com/community/file/1198754108850888330
 License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
-Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP for local use.
+Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP in versioned external sprite atlases.
 
 Avatar Illustration System — Micah Lanier
 Original: https://www.figma.com/community/file/829741575478342595
 License: CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
-Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP for local use.
+Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP in versioned external sprite atlases.
 
 Lorelei — Lisa Wischofsky
 Original: https://www.figma.com/community/file/1198749693280469639
 License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
-Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP for local use.
+Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP in versioned external sprite atlases.
 
 Adventurer — Lisa Wischofsky
 Original: https://www.figma.com/community/file/1184595184137881796
 License: CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
-Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP for local use.
+Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP in versioned external sprite atlases.
 
 Fun Emoji Set — Davis Uche
 Original: https://www.figma.com/community/file/968125295144990435
 License: CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
-Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP for local use.
+Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP in versioned external sprite atlases.
 
 Personas by Draftbit — Draftbit - draftbit.com
 Original: https://personas.draftbit.com/
 License: CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
-Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP for local use.
+Modification: generated combinations and pastel backgrounds via DiceBear 9.4.2; rasterized as 96px WebP in versioned external sprite atlases.
 
 Generator code MIT:
 Licenses

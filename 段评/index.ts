@@ -1,5 +1,5 @@
-// 纸间 · 小说段评 v1.3.6（评论互动版）
-// MIT; locally bundled, no CDN or message writes.
+// 纸间 · 小说段评 v1.3.7（评论互动版）
+// MIT; locally bundled code, external avatar assets, no message writes.
 // 蓝图版改动：跟随蓝图全局美化（空明 / 格子图纸 · 日夜 · 省电）；阅读面板不再全屏——
 // 宽屏是贴着气泡的浮卡，窄屏是底部半屏抽屉，点空白、下滑、Esc 都能关；只盯 #chat，生成期间延后渲染，结束后合并更新。
 import styleText from './style.css?raw';
@@ -1136,13 +1136,31 @@ function createUI({
     const stamp = make('span', 'god-comment-stamp');
     stamp.append(icon('star'), make('span', 'stamp-label', '神评论'));
     stamp.title = `获赞达到 ${HOT_COMMENT_LIKES.toLocaleString()} 的神评论`;
-    const avatar = make('img', 'reader-avatar');
-    avatar.src = profile.avatar;
-    avatar.alt = '';
-    avatar.width = 44;
-    avatar.height = 44;
-    avatar.decoding = 'async';
-    avatar.loading = 'lazy';
+    const avatar = make('span', 'reader-avatar avatar-atlas');
+    avatar.setAttribute('aria-hidden', 'true');
+    const fallback = make('span', 'avatar-fallback', Array.from(comment.name)[0] || '评');
+    const image = make('img', 'avatar-tile');
+    image.alt = '';
+    image.decoding = 'async';
+    image.loading = 'lazy';
+    image.referrerPolicy = 'no-referrer';
+    image.style.left = -profile.column * 100 + '%';
+    image.style.top = -profile.row * 100 + '%';
+    const sources = [
+      profile.avatar,
+      profile.avatar.replace('cdn.jsdelivr.net', 'fastly.jsdelivr.net'),
+      profile.avatar.replace(
+        'https://cdn.jsdelivr.net/gh/colerith/riyuexi@main/',
+        'https://raw.githubusercontent.com/colerith/riyuexi/main/',
+      ),
+    ];
+    let attempt = 0;
+    image.addEventListener('error', () => {
+      if (++attempt < sources.length) image.src = sources[attempt];
+      else image.remove();
+    });
+    image.src = sources[0];
+    avatar.append(fallback, image);
     const body = make('div', 'community-body');
     const header = make('header', 'community-head');
     header.append(make('h3', 'community-name', comment.name));

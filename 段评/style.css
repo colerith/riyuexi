@@ -2525,3 +2525,30 @@ select:focus-visible {
 .layer.as-expanded .grip {
   display: none;
 }
+
+.community-reader .avatar-atlas {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.avatar-atlas .avatar-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 600 18px/1 var(--hc-font);
+  color: var(--hc-accent);
+  background: var(--hc-wash);
+}
+.avatar-atlas .avatar-tile {
+  position: absolute;
+  width: 500%;
+  height: 800%;
+  max-width: none;
+  max-height: none;
+  object-fit: fill;
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
+}

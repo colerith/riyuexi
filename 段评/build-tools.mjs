@@ -8,6 +8,7 @@ export async function writeArtifacts(code, sourceDir, outputRoot) {
   if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Invalid comments version');
   if (/\bfrom\s*['"]https?:|\bimport\s*['"]https?:/.test(code))
     throw new Error('Offline bundle contains remote imports');
+  if (code.includes('data:image/')) throw new Error('Avatar data must be hosted externally, not embedded');
   const dir = path.join(outputRoot, `novel-comments-v${version}`);
   await fs.mkdir(dir, { recursive: true });
   const localName = 'novel-comments-local.js';
@@ -18,7 +19,7 @@ export async function writeArtifacts(code, sourceDir, outputRoot) {
     name: `日月西-段评美化（${mode}）`,
     id: 'fc9962b6-e3d1-445c-9a0e-106a5d104208',
     content,
-    info: `v${version}；本地版与网络版只启用一个。内置320张头像；点赞、日期及等级为本地模拟评论展示。`,
+    info: `v${version}；本地版与网络版只启用一个。远程加载320张头像（8张图集）；点赞、日期及等级为本地模拟评论展示。`,
     button: { enabled: true, buttons: [{ name: '段评设置', visible: true }] },
     data: {},
     export_with: { data: true, button: true },

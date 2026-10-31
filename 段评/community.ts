@@ -1,27 +1,22 @@
-import avatarPack from './avatars.pack.txt?raw';
-
-interface AvatarPack {
-  style: string;
-  count: number;
-  data: string;
-}
-const avatarPacks = JSON.parse(avatarPack) as AvatarPack[];
-export const AVATAR_COUNT = avatarPacks.reduce((sum, pack) => sum + pack.count, 0);
-export const AVATAR_STYLES = avatarPacks.map(pack => pack.style);
+export const AVATAR_STYLES = [
+  'openPeeps',
+  'notionists',
+  'pixelArt',
+  'micah',
+  'lorelei',
+  'adventurer',
+  'funEmoji',
+  'personas',
+] as const;
+export const AVATAR_COUNT = AVATAR_STYLES.length * 40;
 export const HOT_COMMENT_LIKES = 2000;
-const decodedPacks = new Map<number, string[]>();
 export function avatarAt(index: number): string {
-  const group = index % avatarPacks.length;
-  const pack = avatarPacks[group];
-  let avatars = decodedPacks.get(group);
-  if (!avatars) {
-    avatars = JSON.parse(pack.data) as string[];
-    decodedPacks.set(group, avatars);
-  }
-  return avatars[Math.floor(index / avatarPacks.length) % pack.count];
+  const style = AVATAR_STYLES[index % AVATAR_STYLES.length];
+  return 'https://cdn.jsdelivr.net/gh/colerith/riyuexi@main/段评/assets/avatars-v1/' + style + '.webp';
 }
-export function avatarCacheSize(): number {
-  return decodedPacks.size;
+export function avatarCell(index: number): { column: number; row: number } {
+  const cell = Math.floor(index / AVATAR_STYLES.length) % 40;
+  return { column: cell % 5, row: Math.floor(cell / 5) };
 }
 export const EMOTIONS: Record<string, readonly string[]> = {
   开心: ['(≧▽≦)', '(｡･ω･｡)', 'ヽ(✿ﾟ▽ﾟ)ノ', '(๑˃̵ᴗ˂̵)و'],
@@ -109,7 +104,7 @@ interface CommunityData {
   liked: Record<string, true>;
 }
 export interface CommunityStore {
-  profile(name: string): { avatar: string; level: number; color: number };
+  profile(name: string): { avatar: string; column: number; row: number; level: number; color: number };
   comment(key: string): { likes: number; liked: boolean; date: string; dateTime: string };
   toggle(key: string): void;
 }
@@ -137,7 +132,12 @@ export function createCommunityStore(read: () => unknown, write: (data: Communit
       const seed = hash(`${data.seed}|user|${name.trim().normalize('NFKC')}`);
       const index = seed % AVATAR_COUNT;
       if (!imageCache.has(index)) imageCache.set(index, avatarAt(index));
-      return { avatar: imageCache.get(index)!, level: 1 + (seed % 9), color: hash(`${name}|badge`) % 5 };
+      return {
+        avatar: imageCache.get(index)!,
+        ...avatarCell(index),
+        level: 1 + (seed % 9),
+        color: hash(`${name}|badge`) % 5,
+      };
     },
     comment(key) {
       const seed = hash(`${data.seed}|comment|${key}`);

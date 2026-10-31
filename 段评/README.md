@@ -1,11 +1,11 @@
 # 日月西 · 段评美化
 
-当前版本：1.3.1。酒馆助手后台脚本，识别正文 `<hc>…</hc>`，提供七套段评皮肤。
+当前版本：1.3.7。酒馆助手后台脚本，识别正文 `<hc>…</hc>`，提供九套段评皮肤。
 
 ## 安装
 
-- 推荐直接导入 [本地版 JSON](release/novel-comments-v1.3.1/novel-comments-local.json)。也可复制 [本地 JS](release/novel-comments-v1.3.1/novel-comments-local.js) 的完整内容到酒馆助手脚本中。
-- [网络版 JSON](release/novel-comments-v1.3.1/novel-comments-network.json) 使用 CDN 加载本版程序。网络版与本地版只启用一个，升级时重新导入新版。
+- 推荐直接导入 [本地版 JSON](release/novel-comments-v1.3.7/novel-comments-local.json)。也可复制 [本地 JS](release/novel-comments-v1.3.7/novel-comments-local.js) 的完整内容到酒馆助手脚本中。
+- [网络版 JSON](release/novel-comments-v1.3.7/novel-comments-network.json) 使用 CDN 加载本版程序。网络版与本地版只启用一个，升级时重新导入新版。
 - 脚本按钮「段评设置」可打开设置。提示词使用 [提示词.txt](提示词.txt)。已有旧格式段评仍可显示。
 
 ## 本版功能
@@ -17,7 +17,7 @@
 - 生成期间暂停聊天 DOM 观察，结束/停止后统一扫描。切换全局皮肤时保留阅读位置。
 
 - 晋江、LOFTER、AO3、纸笺、夜读、空明、格子图纸：都有头像、称号、等级、日期和可取消的点赞。
-- 内置 320 张头像（Open Peeps、Notionists、Pixel Art、Micah、Lorelei、Adventurer、Fun Emoji、Personas），程序和头像离线可用。头像/等级按 ID 稳定分配；日期、初始赞数为本地随机模拟数据，不是实际网友活动。
+- 远程加载 320 张头像（Open Peeps、Notionists、Pixel Art、Micah、Lorelei、Adventurer、Fun Emoji、Personas），脚本代码本地运行，头像通过 GitHub/CDN 按需加载；加载失败显示昵称首字。头像/等级按 ID 稳定分配；日期、初始赞数为本地随机模拟数据，不是实际网友活动。
 - 点赞按聊天和评论分别保存到脚本变量。换皮肤、重新打开或重载不会重置；保存失败不会假装成功。
 - 每套皮肤各有五色徽章库，称号文字由提示词产生，等级自动生成。
 - 情绪关键词自动配内置颜文字；长标签、合并标签和中英文 ID 均可识别，不显示字数或标签长度警告。
@@ -45,7 +45,7 @@ npm test
 
 在酒馆助手模板工作区：`pnpm build:comments` 单独构建到 `release/段评/`；正常 `pnpm build` / `pnpm watch` 编译本入口后也自动生成同样的本地文件。回归检查：`pnpm test:comments`。
 
-`avatars.pack.txt` 内置 8 组 96px WebP 头像；编译前完成 SVG 栅格化和压缩，运行时只按需读取对应分组，由浏览器异步解码图片，不再执行 gzip 解压或 SVG 解析。`npm run generate:avatars` 可以重新生成，不会在日常构建时联网下载头像。
+assets/avatars-v1/ 保存 8 张 WebP 图集（每张 5 列 × 8 行，单格 96px）。本地 JS 只包含 CDN 地址和裁切位置，不包含 Base64 头像；同风格共用浏览器缓存，失败依次尝试 Fastly、GitHub Raw，再显示昵称首字。npm run generate:avatars 可重新生成图集。
 
 ## 素材与许可
 
@@ -75,3 +75,6 @@ npm test
 
 ### v1.3.6
 隔离相邻心声按钮、隐藏心声内容和生图占位文本，避免污染段评的 DOM 文本匹配。即使组件被插在 hc 内部或段评文本节点之间，也保留原组件节点及事件；兼容不可见分隔字符。
+
+### v1.3.7
+头像资源迁移至仓库 assets/avatars-v1；编译时检查禁止内嵌 data:image，保留原用户头像分配、点赞与等级数据。
