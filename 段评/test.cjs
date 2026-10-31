@@ -36,11 +36,13 @@ for(const skin of ['riyuexi','jelly']){
 assert.equal(validFontUrl('javascript:alert(1)'),'');assert.equal(validFontUrl('https://example.com/a.ttf'),'https://example.com/a.ttf');
 assert.equal(normalizeSettings({font:'bogus'}).font,'theme');
 assert.ok(themeVariables(normalizeSettings({font:'song'}),fakeWin,'jelly')['--hc-font'].includes('Source Han Serif'));
+assert.equal(parseAnnotations('<giggle>A：'+'`'+'心声</giggle><hc>嗑糖|2|甲：好甜'+'`'+'</hc>').entries.length,1);
+assert.equal(parseAnnotations('<bbi_image>'+'`'+'prompt</bbi_image><hc>嗑糖|2|甲：好甜'+'`'+'</hc>').entries.length,1);
 const sample='正文<hc>嗑糖|276|#专业团队|#眼神锁死路线|#八十公分滑道|NoSleep_404【CP唯物论者】：先别嗑，培根卷被夹走的人有没有维权渠道？|ghost.exe【Certified Hater】：我只关心这顿早饭能不能算出勤。</hc>';
 (async()=>{
 for(const skin of ['jinjiang','lofter','ao3','paper','night','kongming','blueprint','riyuexi','jelly']){
  const dom=new JSDOM('<html><head></head><body><div id="chat"><div class="mes" mesid="0"><div class="mes_text"></div></div></div></body></html>',{pretendToBeVisual:true});const w=dom.window;w.matchMedia=()=>({matches:false});
- let variables={hui_novel_comments_v1:{skin,follow:false}};const handlers={};w.getVariables=()=>variables;w.updateVariablesWith=fn=>variables=fn(variables);w.eventOn=(e,fn)=>{handlers[e]=fn;return {stop(){delete handlers[e]}}};w.getButtonEvent=()=> 'settings';w.tavern_events=Object.fromEntries(['GENERATION_STARTED','GENERATION_ENDED','GENERATION_STOPPED','CHARACTER_MESSAGE_RENDERED','CHAT_CHANGED'].map(k=>[k,k]));let chatId='one';const chat=[{mes:''}];w.SillyTavern={getContext:()=>({chat,characterId:'test',getCurrentChatId:()=>chatId})};let timers=new Map(),id=0;w.setTimeout=fn=>{timers.set(++id,fn);return id};w.clearTimeout=id=>timers.delete(id);const flush=()=>{const jobs=[...timers.values()];timers.clear();jobs.forEach(fn=>fn())};
+ let variables={hui_novel_comments_v1:{skin,follow:false}};const handlers={};w.getVariables=()=>variables;w.updateVariablesWith=fn=>variables=fn(variables);w.eventOn=(e,fn)=>{handlers[e]=fn;return {stop(){delete handlers[e]}}};w.getButtonEvent=()=> 'settings';w.tavern_events=Object.fromEntries(['GENERATION_STARTED','GENERATION_ENDED','GENERATION_STOPPED','CHARACTER_MESSAGE_RENDERED','CHAT_CHANGED','MESSAGE_EDITED','MESSAGE_UPDATED'].map(k=>[k,k]));let chatId='one';const chat=[{mes:''}];w.SillyTavern={getContext:()=>({chat,characterId:'test',getCurrentChatId:()=>chatId})};let timers=new Map(),id=0;w.setTimeout=fn=>{timers.set(++id,fn);return id};w.clearTimeout=id=>timers.delete(id);const flush=()=>{const jobs=[...timers.values()];timers.clear();jobs.forEach(fn=>fn())};
  const runtime=await startNovelComments(w,{styleText:fs.readFileSync(path.join(root,'style.css'),'utf8')});const el=w.document.querySelector('.mes_text');handlers.GENERATION_STARTED();for(let i=0;i<30;i++){chat[0].mes=sample;el.innerHTML=sample;await Promise.resolve();handlers.CHARACTER_MESSAGE_RENDERED();flush();assert.equal(el.querySelectorAll('[data-hui-hc]').length,0)}handlers.GENERATION_ENDED();flush();const trigger=el.querySelector('button');assert.ok(trigger);trigger.click();let shadow=w.document.querySelector('[data-hui-overlay]').shadowRoot;assert.equal(shadow.querySelectorAll('.community-reader').length,2);assert.equal(shadow.querySelectorAll('.reader-avatar').length,2);assert.equal(shadow.querySelector('.title-badge').textContent,'CP唯物论者');assert.equal(shadow.querySelectorAll('.notice').length,0);const originalRows=[...shadow.querySelectorAll('.community-reader')];
  const scrollEvent=new w.Event('touchmove',{bubbles:true,cancelable:true});shadow.querySelector('.scroll').dispatchEvent(scrollEvent);assert.equal(scrollEvent.defaultPrevented,false);
  shadow.querySelector('[data-sort=hot]').click();const hotRows=[...shadow.querySelectorAll('.community-reader')];const counts=hotRows.map(n=>Number(n.querySelector('.like-count').textContent.replaceAll(',','')));assert.ok(counts.every((n,i)=>i===0||counts[i-1]>=n));assert.ok(hotRows.every(n=>originalRows.includes(n)));
@@ -54,8 +56,23 @@ for(const skin of ['jinjiang','lofter','ao3','paper','night','kongming','bluepri
  shadow.querySelector('[data-focus=done]').click();assert.ok(shadow.querySelector('.reading'));assert.ok(shadow.querySelector('.as-expanded'));assert.equal(shadow.querySelector('.reading-body').scrollTop,123);
  shadow.querySelector('.settings-button').click();shadow.querySelector('.close').click();assert.ok(shadow.querySelector('.reading'));
  shadow.querySelector('[data-focus=expand]').click();assert.equal(shadow.querySelector('.as-expanded'),null);
+ // A neighboring widget serializes the message: light DOM survives, shadow DOM does not.
+ el.innerHTML=el.innerHTML;await Promise.resolve();flush();assert.equal(el.querySelectorAll('[data-hui-hc]').length,1);assert.ok(el.querySelector('[data-hui-hc-visual]').shadowRoot);
+ // Save event precedes the updated source. Bounded post-save retries reread it.
+ const edited=sample.replace('先别嗑','编辑后先别嗑');
+ handlers.MESSAGE_EDITED(0);el.innerHTML=edited;await Promise.resolve();flush();
+ chat[0].mes=edited;flush();await Promise.resolve();flush();
+ assert.equal(el.querySelectorAll('[data-hui-hc]').length,1);
+ el.querySelector('[data-hui-hc]').click();assert.ok(shadow.textContent.includes('编辑后先别嗑'));shadow.querySelector('.close').click();
+ // Adjacent thought and image placeholders retain their own DOM and recover after serialization.
+ chat[0].mes='<giggle>A：心声</giggle>'+edited+'<bbi_image>image prompt</bbi_image>';
+ el.innerHTML='<span class="th-giggle-widget">心声按钮</span>'+edited+'<div data-bbi-slot=""><img src="test.png"></div>';
+ await Promise.resolve();flush();
+ assert.equal(el.querySelectorAll('[data-hui-hc]').length,1);assert.equal(el.querySelectorAll('[data-bbi-slot] img').length,1);assert.equal(el.querySelector('.th-giggle-widget').textContent,'心声按钮');
+ const parent=el.querySelector('[data-hui-hc]').parentElement;assert.ok(parent.textContent.includes('<hc>'));
+ el.innerHTML=el.innerHTML;await Promise.resolve();flush();assert.ok(el.querySelector('[data-hui-hc-visual]').shadowRoot);assert.equal(el.querySelectorAll('[data-bbi-slot]').length,1);
  chatId='two';handlers.CHAT_CHANGED();flush();el.querySelector('button').click();assert.equal(shadow.querySelector('.like-button').getAttribute('aria-pressed'),'false');
- handlers.GENERATION_STARTED();el.innerHTML=sample;await Promise.resolve();flush();assert.equal(el.querySelectorAll('[data-hui-hc]').length,0);handlers.GENERATION_STOPPED();flush();assert.equal(el.querySelectorAll('[data-hui-hc]').length,1);runtime.dispose();assert.equal(w.document.querySelectorAll('[data-hui-hc],[data-hui-overlay]').length,0);dom.window.close();
+ handlers.GENERATION_STARTED();chat[0].mes=sample;el.innerHTML=sample;await Promise.resolve();flush();assert.equal(el.querySelectorAll('[data-hui-hc]').length,0);handlers.GENERATION_STOPPED();flush();assert.equal(el.querySelectorAll('[data-hui-hc]').length,1);runtime.dispose();assert.equal(w.document.querySelectorAll('[data-hui-hc],[data-hui-overlay]').length,0);dom.window.close();
 }
 console.log('PASS: parser compatibility; long/combined tags; titles; 320 safe unique avatars / 8 lazy packs / stable in-place sorts / god stamps / passive scrolling; stable profiles/dates; like toggle/save/chat isolation; all 9 skins; clock boundaries / fixed modes / font URL validation; 30 streaming updates each; stop/end flush; expand/collapse and settings return; cleanup');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -1,4 +1,4 @@
-// 纸间 · 小说段评 v1.3.4（评论互动版）
+// 纸间 · 小说段评 v1.3.5（评论互动版）
 // MIT; locally bundled, no CDN or message writes.
 // 蓝图版改动：跟随蓝图全局美化（空明 / 格子图纸 · 日夜 · 省电）；阅读面板不再全屏——
 // 宽屏是贴着气泡的浮卡，窄屏是底部半屏抽屉，点空白、下滑、Esc 都能关；只盯 #chat，生成期间延后渲染，结束后合并更新。
@@ -187,7 +187,8 @@ function parseEntry(value: string): ParsedEntry | null {
 function parseAnnotations(source = '') {
   const text = String(source);
   // Mask code without changing offsets. A documented example must never become a bubble.
-  const masked = text.replace(/(^|\n)[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:\n[ \t]*\2[^\n]*(?=\n|$)|$)/g, m =>
+  const isolated = text.replace(/<(giggle|bbi_image)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, m => m.replace(/[^\n]/g, ' '));
+  const masked = isolated.replace(/(^|\n)[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:\n[ \t]*\2[^\n]*(?=\n|$)|$)/g, m =>
     m.replace(/[^\n]/g, ' '),
   );
   const entries: Annotation[] = [];
@@ -1231,6 +1232,11 @@ function createUI({
     const visual = make('span');
     visual.dataset.huiHcVisual = '';
     visual.setAttribute('aria-hidden', 'true');
+    // Shadow DOM does not contribute to textContent/innerHTML. Keep an unslotted
+    // source fallback so adjacent widgets do not mistake this trigger for empty,
+    // and DOM serializers can restore it after rebuilding a message.
+    visual.textContent = entry.raw;
+    host.dataset.huiHcEntry = String(entry.start);
     const root = shadow(visual, host);
     root.append(makeBubble(entry));
     host.append(visual);
@@ -1810,6 +1816,7 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
   const subscriptions: { stop(): void }[] = [];
   const states = new Map<Element, MessageState>();
   const pending = new Set<Element>();
+  const editRetries = new Map<string, number[]>();
   let scanAll = false;
   let settings = normalizeSettings();
   const runtime = { dispose };
@@ -1827,6 +1834,8 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
     if (disposed) return;
     disposed = true;
     host.clearTimeout(timer);
+    for (const timers of editRetries.values()) timers.forEach(id => host.clearTimeout(id));
+    editRetries.clear();
     if (themeFrame) host.cancelAnimationFrame(themeFrame);
     observer?.disconnect();
     pending.clear();
@@ -1904,6 +1913,12 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
     }
 
     function processMessage(element: Element) {
+      // Do not modify the editor or the hidden pre-save message.
+      if (
+        element.querySelector('.edit_textarea, .reasoning_edit_textarea') ||
+        element.matches('.mes_editing, .editing, [is_editing="true"], [data-editing="true"]')
+      )
+        return;
       const source = getMessage(element);
       const text = element.querySelector('.mes_text');
       let state = states.get(element);
@@ -1921,6 +1936,14 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
         }
         state = { element, text, source, parsed: parseAnnotations(source), records: [], projections: new Map() };
         states.set(element, state);
+      }
+      // Another renderer may serialize/reinsert our light DOM but omit its shadow
+      // root. Recover only our own validated fallback, then run normal matching.
+      for (const clone of text.querySelectorAll<HTMLElement>('[data-hui-hc]')) {
+        if (clone.firstElementChild?.shadowRoot) continue;
+        const fallback = clone.querySelector('[data-hui-hc-visual]')?.textContent;
+        if (fallback && state.parsed.entries.some(entry => entry.raw === fallback))
+          clone.replaceWith(doc.createTextNode(fallback));
       }
       state.records = state.records.filter(record => {
         if (record.host.isConnected && text.contains(record.host)) return true;
@@ -2056,15 +2079,26 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
     const listen = (event: string | undefined, handler: () => void) => {
       if (event && typeof frame.eventOn === 'function') subscriptions.push(frame.eventOn(event, handler));
     };
-    const events = frame.tavern_events || host.SillyTavern!.getContext().eventTypes || {};
-    for (const key of [
-      'CHARACTER_MESSAGE_RENDERED',
-      'MESSAGE_UPDATED',
-      'MESSAGE_EDITED',
-      'MESSAGE_SWIPED',
-      'MESSAGE_DELETED',
-      'MORE_MESSAGES_LOADED',
-    ]) {
+    const events = { ...host.SillyTavern!.getContext().eventTypes, ...frame.tavern_events };
+    function retryEditedMessage(messageId?: unknown) {
+      const key = String(messageId ?? 'all');
+      for (const id of editRetries.get(key) || []) host.clearTimeout(id);
+      const targets = () => {
+        if (!/^\d+$/.test(key)) return undefined;
+        return doc.querySelector('#chat .mes[mesid="' + key + '"]') || undefined;
+      };
+      schedule(targets());
+      const retries = [360, 1000].map((delay, index) =>
+        host.setTimeout(() => {
+          if (!disposed) schedule(targets());
+          if (index === 1) editRetries.delete(key);
+        }, delay),
+      );
+      editRetries.set(key, retries);
+    }
+    for (const key of ['MESSAGE_EDITED', 'MESSAGE_UPDATED'])
+      if (events[key]) subscriptions.push(frame.eventOn(events[key], retryEditedMessage));
+    for (const key of ['CHARACTER_MESSAGE_RENDERED', 'MESSAGE_SWIPED', 'MESSAGE_DELETED', 'MORE_MESSAGES_LOADED']) {
       listen(events[key], () => schedule());
     }
     listen(events.GENERATION_STARTED, () => {
@@ -2083,6 +2117,8 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
     listen(events.GENERATION_STOPPED, finishGeneration);
     listen(events.CHAT_CHANGED, () => {
       generating = false;
+      for (const timers of editRetries.values()) timers.forEach(id => host.clearTimeout(id));
+      editRetries.clear();
       pending.clear();
       ui.closeComments();
       for (const state of states.values()) restoreState(state);
