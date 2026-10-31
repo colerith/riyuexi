@@ -4585,14 +4585,18 @@ export function bindGeneralActionHandler(deps: BindGeneralActionsDeps) {
                 deps.resolveRuleTargetForPrompt,
               );
 
-              const selectedPromptIds = await openBuiltinSubselectDialog({
-                panel,
-                switchName,
-                matchedEntries,
-                runtimeState,
-                defaultSelection,
-                allowPrefillChoice: true,
-              });
+              // 单项开关直接开启唯一子项，不再要求经过定制确认；多项仍保留选择流程。
+              const selectedPromptIds =
+                matchedEntries.length === 1
+                  ? [matchedEntries[0].promptId]
+                  : await openBuiltinSubselectDialog({
+                      panel,
+                      switchName,
+                      matchedEntries,
+                      runtimeState,
+                      defaultSelection,
+                      allowPrefillChoice: true,
+                    });
 
               if (!selectedPromptIds) {
                 break;
