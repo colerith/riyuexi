@@ -1,4 +1,4 @@
-// 纸间 · 小说段评 v1.3.5（评论互动版）
+// 纸间 · 小说段评 v1.3.6（评论互动版）
 // MIT; locally bundled, no CDN or message writes.
 // 蓝图版改动：跟随蓝图全局美化（空明 / 格子图纸 · 日夜 · 省电）；阅读面板不再全屏——
 // 宽屏是贴着气泡的浮卡，窄屏是底部半屏抽屉，点空白、下滑、Esc 都能关；只盯 #chat，生成期间延后渲染，结束后合并更新。
@@ -1707,6 +1707,12 @@ const RUNTIME_KEY = Symbol.for('hui.novel-comments.runtime');
 const SETTINGS_KEY = 'hui_novel_comments_v1';
 const COMMUNITY_KEY = 'hui_novel_comments_community_v1';
 const EXCLUDED = 'pre,code,textarea,script,style,[contenteditable="true"],[data-hui-hc],[data-hui-overlay]';
+const FOREIGN_WIDGETS = '.th-giggle-widget, .th-giggle-floating-bubble, [data-bbi-slot]';
+function annotationText(node: Element): string {
+  const clone = node.cloneNode(true) as Element;
+  clone.querySelectorAll(FOREIGN_WIDGETS).forEach(widget => widget.remove());
+  return clone.textContent || '';
+}
 const EXCLUDED_WITH_INLINE_CODE = EXCLUDED.replace('code,', '');
 
 function createMarkdownProjection(host: HostWindow, doc: Document) {
@@ -1738,7 +1744,7 @@ function normalizedMap(text: string) {
   let textOnly = '';
   const offsets = [];
   for (let i = 0; i < text.length; i++) {
-    if (/\s/u.test(text[i])) continue;
+    if (/[\s\u200b-\u200d\u2060\ufeff]/u.test(text[i])) continue;
     // 显示正则把 <hc> 里的反引号换成全角 ｀（不然会吞掉酒馆的对白高亮），比对时当成同一个字
     textOnly += text[i] === '\uFF40' ? '`' : text[i];
     offsets.push(i);
@@ -1762,6 +1768,7 @@ function findTextRange(container: Element, candidates: string[], doc: Document, 
   const walker = doc.createTreeWalker(container, 4 /* SHOW_TEXT */);
   let node: Text | null;
   while ((node = walker.nextNode() as Text | null)) {
+    if (node.parentElement?.closest(FOREIGN_WIDGETS)) continue;
     if (node.parentElement?.closest(allowInlineCode ? EXCLUDED_WITH_INLINE_CODE : EXCLUDED)) {
       content += '\u0000';
       continue;
@@ -1956,7 +1963,7 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
         const hc = Array.from(text.querySelectorAll('hc')).find(
           node =>
             !node.closest(EXCLUDED) &&
-            normalizedMap(node.textContent ?? '').text === normalizedMap(decodeEntities(entry.inner)).text,
+            normalizedMap(annotationText(node)).text === normalizedMap(decodeEntities(entry.inner)).text,
         );
         let range;
         if (hc) {
@@ -1976,9 +1983,7 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
           const renderedHc = Array.from(text.querySelectorAll('hc')).find(
             node =>
               !node.closest(EXCLUDED) &&
-              candidates.some(
-                candidate => normalizedMap(node.textContent ?? '').text === normalizedMap(candidate).text,
-              ),
+              candidates.some(candidate => normalizedMap(annotationText(node)).text === normalizedMap(candidate).text),
           );
           if (renderedHc) {
             range = doc.createRange();
@@ -1987,6 +1992,12 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
         }
         if (!range) continue;
         const original = range.extractContents();
+        // A neighboring renderer can insert a widget inside hc or between its
+        // text nodes. Keep the actual nodes (and listeners) outside our backup.
+        const foreign = Array.from(original.querySelectorAll<HTMLElement>(FOREIGN_WIDGETS)).filter(
+          node => !node.parentElement?.closest(FOREIGN_WIDGETS),
+        );
+        foreign.forEach(node => node.remove());
         const context = host.SillyTavern!.getContext();
         const record = {
           scope: `${context.characterId ?? ''}|${context.getCurrentChatId?.() ?? context.chatId ?? ''}|${element.getAttribute('mesid')}`,
@@ -1997,6 +2008,7 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
         const bubble = ui.createBubble(entry, record);
         Object.assign(record, bubble);
         range.insertNode(bubble.host);
+        if (foreign.length) bubble.host.after(...foreign);
         state.records.push(record);
       }
     }

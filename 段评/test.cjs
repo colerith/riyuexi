@@ -58,6 +58,18 @@ for(const skin of ['jinjiang','lofter','ao3','paper','night','kongming','bluepri
  shadow.querySelector('[data-focus=expand]').click();assert.equal(shadow.querySelector('.as-expanded'),null);
  // A neighboring widget serializes the message: light DOM survives, shadow DOM does not.
  el.innerHTML=el.innerHTML;await Promise.resolve();flush();assert.equal(el.querySelectorAll('[data-hui-hc]').length,1);assert.ok(el.querySelector('[data-hui-hc-visual]').shadowRoot);
+ // A thought widget/hidden tooltip splits hc text. Match only annotation text and preserve live widgets.
+ const interrupted=w.document.createElement('hc');
+ interrupted.textContent=sample.match(/<hc>([\s\S]*?)<\/hc>/)[1];
+ const marker=w.document.createElement('span');marker.className='th-giggle-widget';marker.innerHTML='<button>心声</button><span hidden>不属于段评的隐藏心声</span>';
+ let widgetClicks=0;marker.querySelector('button').addEventListener('click',()=>widgetClicks++);
+ const textNode=interrupted.firstChild;const tail=textNode.splitText(45);interrupted.insertBefore(marker,tail);
+ const slot=w.document.createElement('span');slot.dataset.bbiSlot='';slot.textContent='生图中';interrupted.append(slot);
+ el.replaceChildren(interrupted);await Promise.resolve();flush();
+ assert.equal(el.querySelectorAll('[data-hui-hc]').length,1);assert.equal(el.querySelector('.th-giggle-widget'),marker);assert.equal(el.querySelector('[data-bbi-slot]'),slot);marker.querySelector('button').click();assert.equal(widgetClicks,1);
+ // Stripped hc tag plus a widget between split text nodes uses the same safe matching.
+ el.innerHTML=sample.replace('<hc>','').replace('</hc>','').replace('先别嗑','先<span class="th-giggle-widget"><button>心声</button><span hidden>hidden</span></span>别嗑');
+ await Promise.resolve();flush();assert.equal(el.querySelectorAll('[data-hui-hc]').length,1);assert.equal(el.querySelectorAll('.th-giggle-widget').length,1);
  // Save event precedes the updated source. Bounded post-save retries reread it.
  const edited=sample.replace('先别嗑','编辑后先别嗑');
  handlers.MESSAGE_EDITED(0);el.innerHTML=edited;await Promise.resolve();flush();
