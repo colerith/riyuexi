@@ -2509,3 +2509,19 @@ select:focus-visible {
     font-size: 10px;
   }
 }
+
+.reading .panel-head .expand-button {
+  margin-left: auto;
+}
+.reading .panel-head .expand-button + .close {
+  margin-left: 0;
+}
+.layer.as-expanded .panel {
+  bottom: auto;
+  border-radius: 16px;
+  transform: none;
+  transform-origin: center;
+}
+.layer.as-expanded .grip {
+  display: none;
+}

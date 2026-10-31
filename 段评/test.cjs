@@ -48,8 +48,14 @@ for(const skin of ['jinjiang','lofter','ao3','paper','night','kongming','bluepri
  shadow.querySelector('[data-sort=latest]').click();const dates=[...shadow.querySelectorAll('time')].map(n=>n.dateTime);assert.ok(dates.every((d,i)=>i===0||dates[i-1]>=d));
  shadow.querySelector('[data-sort=default]').click();assert.equal(shadow.querySelector('.community-reader'),originalRows[0]);assert.equal(shadow.querySelector('.reader-floor').textContent,'1 楼');
  const like=shadow.querySelector('.like-button');const count=Number(like.querySelector('.like-count').textContent.replaceAll(',',''));like.click();assert.equal(like.getAttribute('aria-pressed'),'true');assert.equal(Number(like.querySelector('.like-count').textContent.replaceAll(',','')),count+1);shadow.querySelector('.close').click();trigger.click();assert.equal(shadow.querySelector('.like-button').getAttribute('aria-pressed'),'true');
+ shadow.querySelector('[data-focus=expand]').click();assert.ok(shadow.querySelector('.as-expanded'));
+ shadow.querySelector('.reading-body').scrollTop=123;
+ shadow.querySelector('.settings-button').click();assert.ok(shadow.querySelector('.settings'));
+ shadow.querySelector('[data-focus=done]').click();assert.ok(shadow.querySelector('.reading'));assert.ok(shadow.querySelector('.as-expanded'));assert.equal(shadow.querySelector('.reading-body').scrollTop,123);
+ shadow.querySelector('.settings-button').click();shadow.querySelector('.close').click();assert.ok(shadow.querySelector('.reading'));
+ shadow.querySelector('[data-focus=expand]').click();assert.equal(shadow.querySelector('.as-expanded'),null);
  chatId='two';handlers.CHAT_CHANGED();flush();el.querySelector('button').click();assert.equal(shadow.querySelector('.like-button').getAttribute('aria-pressed'),'false');
  handlers.GENERATION_STARTED();el.innerHTML=sample;await Promise.resolve();flush();assert.equal(el.querySelectorAll('[data-hui-hc]').length,0);handlers.GENERATION_STOPPED();flush();assert.equal(el.querySelectorAll('[data-hui-hc]').length,1);runtime.dispose();assert.equal(w.document.querySelectorAll('[data-hui-hc],[data-hui-overlay]').length,0);dom.window.close();
 }
-console.log('PASS: parser compatibility; long/combined tags; titles; 320 safe unique avatars / 8 lazy packs / stable in-place sorts / god stamps / passive scrolling; stable profiles/dates; like toggle/save/chat isolation; all 9 skins; clock boundaries / fixed modes / font URL validation; 30 streaming updates each; stop/end flush and cleanup');
+console.log('PASS: parser compatibility; long/combined tags; titles; 320 safe unique avatars / 8 lazy packs / stable in-place sorts / god stamps / passive scrolling; stable profiles/dates; like toggle/save/chat isolation; all 9 skins; clock boundaries / fixed modes / font URL validation; 30 streaming updates each; stop/end flush; expand/collapse and settings return; cleanup');
 })().catch(e=>{console.error(e);process.exitCode=1});

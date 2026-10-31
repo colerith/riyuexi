@@ -1,4 +1,4 @@
-// 纸间 · 小说段评 v1.3.2（评论互动版）
+// 纸间 · 小说段评 v1.3.3（评论互动版）
 // MIT; locally bundled, no CDN or message writes.
 // 蓝图版改动：跟随蓝图全局美化（空明 / 格子图纸 · 日夜 · 省电）；阅读面板不再全屏——
 // 宽屏是贴着气泡的浮卡，窄屏是底部半屏抽屉，点空白、下滑、Esc 都能关；只盯 #chat，生成期间延后渲染，结束后合并更新。
@@ -748,6 +748,8 @@ function createButtonActivation(win: HostWindow) {
 const ICONS = {
   comment: '\uf075',
   close: '\uf00d',
+  expand: '\uf065',
+  compress: '\uf066',
   moon: '\uf186',
   sun: '\uf185',
   water: '\uf773',
@@ -808,6 +810,13 @@ function createUI({
     | { kind: 'comments'; record: BubbleRecord; trigger: HTMLButtonElement }
     | { kind: 'settings'; trigger?: undefined }
     | null = null;
+  let expanded = false;
+  let returnToComment: {
+    record: BubbleRecord;
+    trigger: HTMLButtonElement;
+    scrollTop: number;
+    expanded: boolean;
+  } | null = null;
   let lastFocus: HTMLElement | null = null;
   let saveError = '';
   let layer: HTMLDivElement | null = null;
@@ -926,6 +935,7 @@ function createUI({
   function closePanel(restoreFocus = true) {
     if (active?.trigger) active.trigger.setAttribute('aria-expanded', 'false');
     active = null;
+    returnToComment = null;
     layer?.remove();
     layer = null;
     if (restoreFocus && lastFocus?.isConnected) lastFocus.focus({ preventScroll: true });
@@ -945,10 +955,28 @@ function createUI({
   function place() {
     const panel = layer?.querySelector<HTMLElement>('.panel');
     if (!panel || !layer) return;
-    const mode = layoutMode();
+    const isExpanded = active?.kind === 'comments' && expanded;
+    const mode = isExpanded ? 'pop' : layoutMode();
+    layer.classList.toggle('as-expanded', isExpanded);
     layer.classList.toggle('as-sheet', mode === 'sheet');
     layer.classList.toggle('as-pop', mode === 'pop');
     panel.style.left = panel.style.top = panel.style.width = panel.style.maxHeight = panel.style.transform = '';
+    panel.style.height = '';
+    if (isExpanded) {
+      const edge = 12;
+      const width = Math.min(760, win.innerWidth - edge * 2);
+      const height = Math.min(820, (win.visualViewport?.height || win.innerHeight) - edge * 2);
+      panel.style.width = width + 'px';
+      panel.style.height = panel.style.maxHeight = height + 'px';
+      panel.style.left = Math.max(edge, (win.innerWidth - width) / 2) + 'px';
+      panel.style.top =
+        Math.max(
+          edge,
+          ((win.visualViewport?.height || win.innerHeight) - height) / 2 + (win.visualViewport?.offsetTop || 0),
+        ) + 'px';
+      panel.dataset.side = 'center';
+      return;
+    }
     if (mode === 'sheet') return;
     const vw = win.innerWidth,
       vh = win.innerHeight,
@@ -1072,7 +1100,31 @@ function createUI({
       );
     }
     head.append(heading);
-    const close = button('', 'icon-button close', () => closePanel(), 'close');
+    if (!isSettings) {
+      const expand = button(
+        '',
+        'icon-button expand-button',
+        () => {
+          const scroll = panel.querySelector('.scroll');
+          const top = scroll?.scrollTop || 0;
+          expanded = !expanded;
+          updateExpand();
+          place();
+          if (scroll) scroll.scrollTop = top;
+        },
+        'expand',
+      );
+      const updateExpand = () => {
+        expand.replaceChildren(icon(expanded ? 'compress' : 'expand'));
+        const label = expanded ? '收起窗口' : '展开窗口';
+        expand.setAttribute('aria-label', label);
+        expand.setAttribute('aria-pressed', String(expanded));
+        expand.title = label;
+      };
+      updateExpand();
+      head.append(expand);
+    }
+    const close = button('', 'icon-button close', () => (isSettings ? finishSettings() : closePanel()), 'close');
     close.append(icon('close'));
     close.setAttribute('aria-label', '关闭');
     head.append(close);
@@ -1200,8 +1252,15 @@ function createUI({
     return { host, button: host };
   }
 
-  function openComments(record: BubbleRecord, trigger: HTMLButtonElement, keepPosition = false) {
-    const oldScroll = keepPosition ? overlayRoot.querySelector('.scroll')?.scrollTop || 0 : 0;
+  function openComments(
+    record: BubbleRecord,
+    trigger: HTMLButtonElement,
+    keepPosition = false,
+    restore?: { scrollTop: number; expanded: boolean },
+  ) {
+    const oldScroll = restore?.scrollTop ?? (keepPosition ? overlayRoot.querySelector('.scroll')?.scrollTop || 0 : 0);
+    if (restore) expanded = restore.expanded;
+    else if (active?.kind !== 'comments') expanded = false;
     const oldFocus = keepPosition ? (overlayRoot.activeElement as HTMLElement | null)?.dataset.focus : undefined;
     closePanel(false);
     lastFocus = trigger;
@@ -1212,7 +1271,7 @@ function createUI({
     const { panel, head } = shell((isBlueprintSkin(skin) ? BP_SKINS[skin] : THEMES[skin]).title);
     const total = make('span', 'comment-total', `${entry.count.toLocaleString()} 条`);
     total.title = `当前展示 ${entry.comments.length} 条批注`;
-    head.insertBefore(total, head.lastChild);
+    head.insertBefore(total, head.querySelector('.expand-button') || head.lastChild);
     const scroll = make('div', 'scroll reading-body');
     const intro = make('div', 'intro');
     if (entry.quote) intro.append(make('blockquote', 'quote', entry.quote));
@@ -1508,7 +1567,7 @@ function createUI({
       status.setAttribute('role', 'alert');
       foot.append(status);
     }
-    foot.append(button('完成', 'primary', () => closePanel(), 'done'));
+    foot.append(button('完成', 'primary', () => finishSettings(), 'done'));
     panel.append(scroll, foot);
     place();
     scroll.scrollTop = scrollTop;
@@ -1519,11 +1578,39 @@ function createUI({
       (el || panel).focus({ preventScroll: true });
     } else panel.focus({ preventScroll: true });
   }
+  function finishSettings() {
+    const saved = returnToComment;
+    if (saved && getSettings().enabled) {
+      const record = saved.record.host.isConnected
+        ? saved.record
+        : allRecords().find(
+            candidate =>
+              candidate.scope === saved.record.scope &&
+              candidate.entry.ordinal === saved.record.entry.ordinal &&
+              candidate.entry.raw === saved.record.entry.raw,
+          );
+      if (record) {
+        openComments(record, record.host, false, saved);
+        return;
+      }
+    }
+    closePanel();
+  }
   function openSettings() {
+    const saved =
+      active?.kind === 'comments'
+        ? {
+            record: active.record,
+            trigger: active.trigger,
+            scrollTop: overlayRoot.querySelector('.reading-body')?.scrollTop || 0,
+            expanded,
+          }
+        : returnToComment;
     const trigger = active?.trigger || doc.activeElement;
     closePanel(false);
     lastFocus = trigger as HTMLElement | null;
     active = { kind: 'settings' };
+    returnToComment = saved;
     renderSettings();
   }
   function updateThemes() {
