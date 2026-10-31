@@ -1,10 +1,11 @@
-// 纸间 · 小说段评 v1.3.0（评论互动版）
+// 纸间 · 小说段评 v1.3.1（评论互动版）
 // MIT; locally bundled, no CDN or message writes.
 // 蓝图版改动：跟随蓝图全局美化（空明 / 格子图纸 · 日夜 · 省电）；阅读面板不再全屏——
 // 宽屏是贴着气泡的浮卡，窄屏是底部半屏抽屉，点空白、下滑、Esc 都能关；只盯 #chat，生成期间延后渲染，结束后合并更新。
 import styleText from './style.css?raw';
 import {
   createCommunityStore,
+  HOT_COMMENT_LIKES,
   normalizeTags,
   parseIdentity,
   resolveFace,
@@ -12,15 +13,21 @@ import {
   type CommunityStore,
 } from './community';
 
-type Skin = 'kongming' | 'blueprint' | 'jinjiang' | 'lofter' | 'ao3' | 'paper' | 'night';
+type Skin = 'kongming' | 'blueprint' | 'jinjiang' | 'lofter' | 'ao3' | 'paper' | 'night' | 'riyuexi' | 'jelly';
 type BlueprintSkin = 'kongming' | 'blueprint';
 type Mode = 'day' | 'night';
+type Appearance = 'auto' | Mode;
+type CommentSort = 'default' | 'hot' | 'latest';
 interface Palette {
   accent: string;
   paper: string;
   ink: string;
 }
 interface Settings {
+  sort: CommentSort;
+  appearance: { riyuexi: Appearance; jelly: Appearance };
+  font: string;
+  fontUrl: string;
   enabled: boolean;
   skin: Skin;
   follow: boolean;
@@ -76,7 +83,7 @@ interface ShowdownLibrary {
   Converter: new (options: Record<string, boolean>) => { makeHtml(text: string): string };
 }
 type HostWindow = Window &
-  Pick<typeof globalThis, 'MutationObserver' | 'CSS'> & {
+  Pick<typeof globalThis, 'MutationObserver' | 'CSS' | 'CSSStyleSheet'> & {
     SillyTavern?: {
       libs?: { showdown?: ShowdownLibrary };
       getContext(): {
@@ -217,6 +224,10 @@ function parseAnnotations(source = '') {
 }
 
 const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze<Settings>({
+  sort: 'default',
+  appearance: { riyuexi: 'auto', jelly: 'auto' },
+  font: 'theme',
+  fontUrl: '',
   enabled: true,
   skin: 'jinjiang',
   follow: true,
@@ -232,8 +243,17 @@ function normalizeSettings(value?: unknown): Settings {
   for (const key of Object.keys(custom) as (keyof Palette)[])
     if (/^#[\da-f]{6}$/i.test(v.custom?.[key] ?? '')) custom[key] = v.custom![key];
   return {
+    appearance: {
+      riyuexi: normalizeAppearance(v.appearance?.riyuexi),
+      jelly: normalizeAppearance(v.appearance?.jelly),
+    },
+    font: typeof v.font === 'string' && v.font in FONTS ? v.font : 'theme',
+    fontUrl: validFontUrl(v.fontUrl),
+    sort: v.sort === 'hot' || v.sort === 'latest' ? v.sort : 'default',
     enabled: typeof v.enabled === 'boolean' ? v.enabled : true,
-    skin: ['kongming', 'blueprint', 'jinjiang', 'lofter', 'ao3', 'paper', 'night'].includes(v.skin ?? '')
+    skin: ['kongming', 'blueprint', 'jinjiang', 'lofter', 'ao3', 'paper', 'night', 'riyuexi', 'jelly'].includes(
+      v.skin ?? '',
+    )
       ? v.skin!
       : 'jinjiang',
     follow: v.follow !== false,
@@ -244,8 +264,72 @@ function normalizeSettings(value?: unknown): Settings {
   };
 }
 
+const FONTS: Record<string, { name: string; family: string }> = {
+  theme: { name: '跟随皮肤', family: '' },
+  song: {
+    name: '思源宋体',
+    family: '"Source Han Serif SC", "Noto Serif CJK SC", "Noto Serif SC", "Songti SC", SimSun, serif',
+  },
+  hei: {
+    name: '思源黑体',
+    family: '"Source Han Sans SC", "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", sans-serif',
+  },
+  pingfang: { name: '苹方', family: '"PingFang SC", -apple-system, "Microsoft YaHei", sans-serif' },
+  yahei: { name: '微软雅黑', family: '"Microsoft YaHei", sans-serif' },
+  kaiti: { name: '楷体', family: '"Kaiti SC", KaiTi, STKaiti, serif' },
+  songti: { name: '宋体', family: '"Songti SC", SimSun, serif' },
+  custom: { name: '自定义字体网链', family: '"HuiCommentsCustom", "PingFang SC", "Microsoft YaHei", sans-serif' },
+};
+function validFontUrl(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) return '';
+  try {
+    const url = new URL(value.trim());
+    return /^https?:$/.test(url.protocol) ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+function normalizeAppearance(value: unknown): Appearance {
+  return value === 'day' || value === 'night' ? value : 'auto';
+}
+function isDualSkin(skin: Skin): skin is 'riyuexi' | 'jelly' {
+  return skin === 'riyuexi' || skin === 'jelly';
+}
+function effectiveMode(
+  settings: Settings,
+  win: HostWindow,
+  skin = effectiveSkin(settings, win),
+  hour = new Date().getHours(),
+): Mode {
+  if (!isDualSkin(skin)) return hostLook(win).mode;
+  const mode = settings.appearance[skin];
+  return mode === 'auto' ? (hour >= 6 && hour < 18 ? 'day' : 'night') : mode;
+}
+
 // ── themes ──
+const DUAL_PALETTES = {
+  riyuexi: {
+    day: { accent: '#d85c3b', paper: '#fdf6ee', ink: '#4a3424', wash: '#fffaf5', muted: '#937158', line: '#dfc99c' },
+    night: { accent: '#8fb6d9', paper: '#0f141a', ink: '#e2e8f0', wash: '#1a232e', muted: '#93a5b7', line: '#384858' },
+  },
+  jelly: {
+    day: { accent: '#437f9d', paper: '#f3f4fc', ink: '#585878', wash: '#fff6fa', muted: '#73738f', line: '#c3dce8' },
+    night: { accent: '#d5b7d9', paper: '#3c2f3c', ink: '#e8dfe8', wash: '#2d232d', muted: '#c0a8c5', line: '#80657c' },
+  },
+};
 const THEMES = {
+  riyuexi: {
+    name: '日月西',
+    title: '日月段评',
+    ...DUAL_PALETTES.riyuexi.day,
+    font: '"Noto Serif SC", "Songti SC", SimSun, serif',
+  },
+  jelly: {
+    name: '水母枯蝶',
+    title: '浮光段评',
+    ...DUAL_PALETTES.jelly.day,
+    font: '"Noto Serif SC", "Songti SC", SimSun, serif',
+  },
   jinjiang: {
     name: '晋江 · 书评',
     title: '段评',
@@ -460,12 +544,14 @@ function themeVariables(
       '--hc-scrim': t.scrim,
       '--hc-shadow': t.shadow,
       '--hc-halo': t.halo,
-      '--hc-font': BP_SANS,
+      '--hc-font': FONTS[settings.font]?.family || BP_SANS,
       '--hc-mono': BP_MONO,
       '--hc-size': `${settings.fontSize}px`,
     };
   }
-  const skin = THEMES[skinId];
+  const skin = isDualSkin(skinId)
+    ? { ...THEMES[skinId], ...DUAL_PALETTES[skinId][modeOverride || effectiveMode(settings, win, skinId)] }
+    : THEMES[skinId];
   const palette =
     settings.colorMode === 'follow' ? sampleHostPalette(win) : settings.colorMode === 'custom' ? settings.custom : null;
   const p = palette
@@ -484,7 +570,7 @@ function themeVariables(
     '--hc-wash': p.wash,
     '--hc-muted': p.muted,
     '--hc-line': p.line,
-    '--hc-font': p.font,
+    '--hc-font': FONTS[settings.font]?.family || p.font,
     '--hc-size': `${settings.fontSize}px`,
     '--hc-surface': p.paper,
     '--hc-solid': p.paper,
@@ -640,12 +726,16 @@ const ICONS = {
   comment: '\uf075',
   close: '\uf00d',
   moon: '\uf186',
+  sun: '\uf185',
+  water: '\uf773',
+  feather: '\uf52d',
   pen: '\uf303',
   gear: '\uf013',
   previous: '\uf053',
   next: '\uf054',
   refresh: '\uf2f1',
-  like: '\uf164',
+  like: '\uf004',
+  star: '\uf005',
   check: '\uf00c',
   palette: '\uf53f',
 };
@@ -708,6 +798,19 @@ function createUI({
     if (text !== undefined) node.textContent = text;
     return node;
   };
+  const customFontStyle = make('style');
+  doc.head.append(customFontStyle);
+  let loadedFontUrl = '';
+  function syncFont() {
+    const settings = getSettings();
+    const url = settings.font === 'custom' ? validFontUrl(settings.fontUrl) : '';
+    if (url === loadedFontUrl) return;
+    loadedFontUrl = url;
+    customFontStyle.textContent = url
+      ? '@font-face{font-family:"HuiCommentsCustom";src:url(' + JSON.stringify(url) + ');font-display:swap;}'
+      : '';
+  }
+  syncFont();
   const fontProbe = make('i', 'fa-solid fa-comment');
   fontProbe.hidden = true;
   doc.body.append(fontProbe);
@@ -733,7 +836,10 @@ function createUI({
       吸取酒馆配色: 'palette',
     };
     const actionIcon = actionIcons[text];
-    if (actionIcon) b.prepend(icon(actionIcon));
+    if (actionIcon) {
+      b.classList.add('action-button');
+      b.replaceChildren(icon(actionIcon), make('span', 'button-label', text));
+    }
     if (action) activation.bind(b, action);
     if (focusKey) b.dataset.focus = focusKey;
     return b;
@@ -745,23 +851,38 @@ function createUI({
     settings = getSettings(),
     skinId = effectiveSkin(settings, win),
     mode?: Mode,
+    variables?: Record<string, string>,
   ) {
     const look = hostLook(win);
     host.dataset.skin = skinId;
-    host.dataset.mode = mode || look.mode;
+    host.toggleAttribute('data-custom-font', settings.font !== 'theme');
+    host.dataset.mode = mode || effectiveMode(settings, win, skinId);
     if (look.lite) host.dataset.lite = '';
     else delete host.dataset.lite;
-    const vars = themeVariables(settings, win, skinId, mode);
+    const vars = variables || themeVariables(settings, win, skinId, mode);
     // 换套时把上一套多出来的变量清掉，免得空明的玻璃色残留到晋江上
     for (const key of host.__hcKeys || []) if (!(key in vars)) host.style.removeProperty(key);
     host.__hcKeys = Object.keys(vars);
     Object.entries(vars).forEach(([key, value]) => host.style.setProperty(key, value));
   }
+  // 同一宿主文档只解析一份样式，所有气泡和面板共享，避免每段重复解析整份 CSS。
+  let sharedSheet: CSSStyleSheet | undefined;
+  try {
+    if (typeof win.CSSStyleSheet === 'function' && 'adoptedStyleSheets' in doc) {
+      sharedSheet = new win.CSSStyleSheet();
+      sharedSheet.replaceSync(styleText);
+    }
+  } catch {
+    sharedSheet = undefined;
+  }
   function shadow(host: ThemeElement, themeHost: ThemeElement = host) {
     const root = host.attachShadow({ mode: 'open' });
-    const style = make('style');
-    style.textContent = styleText;
-    root.append(style);
+    if (sharedSheet) root.adoptedStyleSheets = [sharedSheet];
+    else {
+      const style = make('style');
+      style.textContent = styleText;
+      root.append(style);
+    }
     roots.add(themeHost);
     applyTheme(themeHost);
     return root;
@@ -895,17 +1016,19 @@ function createUI({
     );
     layer.dataset.key = isSettings ? 'settings' : skin;
     if (hostLook(win).lite) layer.classList.add('lite');
-    // 点空白（卡片外任何地方）就关；浮卡模式下在空白处滚轮也当作要关
-    layer.addEventListener('click', e => {
-      if (e.target === layer) closePanel();
-    });
-    const backdrop = (e: Event) => {
-      if ((e.target as Element).closest('.scroll')) return;
-      e.preventDefault();
-      if (e.type === 'wheel' && e.target === layer && layer?.classList.contains('as-pop')) closePanel(false);
-    };
-    layer.addEventListener('wheel', backdrop, { passive: false });
-    layer.addEventListener('touchmove', backdrop, { passive: false });
+    // 拦截器只放在卡片外的遮罩，不再让正文滚动经过非 passive 的 touchmove/wheel 监听。
+    const backdrop = make('div', 'panel-backdrop');
+    backdrop.setAttribute('aria-hidden', 'true');
+    backdrop.addEventListener('click', () => closePanel());
+    backdrop.addEventListener(
+      'wheel',
+      event => {
+        event.preventDefault();
+        closePanel(false);
+      },
+      { passive: false },
+    );
+    layer.append(backdrop);
     const panel = make('section', `panel ${isSettings ? 'settings' : 'reading'} skin-${skin}`);
     if (replacing) panel.classList.add('no-enter');
     panel.setAttribute('role', 'dialog');
@@ -928,12 +1051,20 @@ function createUI({
     return { panel, head };
   }
 
-  function reader(comment: ReaderComment, skin: Skin, index: number, record: BubbleRecord) {
-    const key = stableKey(
+  function commentKey(record: BubbleRecord, index: number): string {
+    const comment = record.entry.comments[index];
+    return stableKey(
       `${record.scope}|${record.entry.ordinal}|${record.entry.quote}|${index}|${comment.name}|${comment.text}`,
     );
+  }
+  function reader(comment: ReaderComment, skin: Skin, index: number, record: BubbleRecord, onLikeChanged: () => void) {
+    const key = commentKey(record, index);
     const profile = community.profile(comment.name);
     const article = make('article', `reader reader-${skin} community-reader`);
+    article.dataset.commentKey = key;
+    const stamp = make('span', 'god-comment-stamp');
+    stamp.append(icon('star'), make('span', 'stamp-label', '神评论'));
+    stamp.title = `获赞达到 ${HOT_COMMENT_LIKES.toLocaleString()} 的神评论`;
     const avatar = make('img', 'reader-avatar');
     avatar.src = profile.avatar;
     avatar.alt = '';
@@ -961,11 +1092,13 @@ function createUI({
       try {
         community.toggle(key);
         paintLike();
+        onLikeChanged();
       } catch (error) {
         console.error('[小说段评] 点赞保存失败', error);
         likeStatus.textContent = '点赞保存失败，请重试';
       }
     });
+    likes.dataset.focus = `like-${key}`;
     const likeIcon = icon('like');
     const likeCount = make('span', 'like-count');
     const likeStatus = make('span', 'sr-only');
@@ -981,10 +1114,12 @@ function createUI({
       likes.title = value.liked ? '取消点赞' : '点赞';
       likeCount.textContent = value.likes.toLocaleString();
       likeStatus.textContent = '';
+      stamp.hidden = value.likes < HOT_COMMENT_LIKES;
+      article.classList.toggle('is-god-comment', !stamp.hidden);
     }
     paintLike();
     body.append(header, prose, meta, likeStatus);
-    article.append(avatar, body, likes);
+    article.append(avatar, body, likes, stamp);
     return article;
   }
 
@@ -999,6 +1134,10 @@ function createUI({
     if (skin === 'jinjiang') b.append(make('span', 'bubble-mark', '评'), face, count);
     else if (skin === 'lofter') b.append(icon('comment'), face, count);
     else if (skin === 'ao3') b.append(face, make('span', 'bracket', '['), count, make('span', 'bracket', ']'));
+    else if (skin === 'riyuexi')
+      b.append(icon(effectiveMode(getSettings(), win, skin) === 'day' ? 'sun' : 'moon'), face, count);
+    else if (skin === 'jelly')
+      b.append(icon(effectiveMode(getSettings(), win, skin) === 'day' ? 'water' : 'feather'), face, count);
     else if (skin === 'paper') b.append(icon('pen'), count, face);
     else if (skin === 'kongming') b.append(make('span', 'bubble-mark', '评'), face, count);
     else if (skin === 'blueprint') b.append(make('span', 'bubble-mark', 'NOTE'), face, count);
@@ -1028,7 +1167,9 @@ function createUI({
     return { host, button: host };
   }
 
-  function openComments(record: BubbleRecord, trigger: HTMLButtonElement) {
+  function openComments(record: BubbleRecord, trigger: HTMLButtonElement, keepPosition = false) {
+    const oldScroll = keepPosition ? overlayRoot.querySelector('.scroll')?.scrollTop || 0 : 0;
+    const oldFocus = keepPosition ? (overlayRoot.activeElement as HTMLElement | null)?.dataset.focus : undefined;
     closePanel(false);
     lastFocus = trigger;
     active = { kind: 'comments', record, trigger };
@@ -1048,7 +1189,54 @@ function createUI({
     scroll.append(intro);
     const comments = make('div', 'comment-list');
     if (entry.warnings.length) comments.append(make('div', 'notice', entry.warnings.join('；')));
-    entry.comments.forEach((comment, i) => comments.append(reader(comment, skin, i, record)));
+    let sortMode = getSettings().sort;
+    const sortBar = make('div', 'comment-sort');
+    sortBar.append(make('span', 'sort-caption', '推荐排序'));
+    const sortButtons = make('div', 'sort-options');
+    sortButtons.setAttribute('role', 'group');
+    sortButtons.setAttribute('aria-label', '评论排序');
+    const rows = entry.comments.map((comment, index) => ({
+      index,
+      key: commentKey(record, index),
+      node: reader(comment, skin, index, record, () => {
+        if (sortMode === 'hot') arrangeComments(false);
+      }),
+    }));
+    function arrangeComments(resetScroll: boolean) {
+      const sorted = [...rows].sort((a, b) => {
+        if (sortMode === 'hot')
+          return community.comment(b.key).likes - community.comment(a.key).likes || a.index - b.index;
+        if (sortMode === 'latest')
+          return (
+            community.comment(b.key).dateTime.localeCompare(community.comment(a.key).dateTime) || a.index - b.index
+          );
+        return a.index - b.index;
+      });
+      // 原地移动现有节点，保留头像解码、焦点、事件和点赞状态。
+      const focused = overlayRoot.activeElement as HTMLElement | null;
+      sorted.forEach((row, index) => {
+        if (comments.children[index] !== row.node) comments.insertBefore(row.node, comments.children[index] || null);
+      });
+      if (focused?.isConnected && overlayRoot.activeElement !== focused) focused.focus({ preventScroll: true });
+      for (const button of sortButtons.querySelectorAll<HTMLButtonElement>('button'))
+        button.setAttribute('aria-pressed', String(button.dataset.sort === sortMode));
+      if (resetScroll) scroll.scrollTop = 0;
+    }
+    for (const [mode, label] of [
+      ['default', '默认'],
+      ['hot', '热门'],
+      ['latest', '最新'],
+    ] as const) {
+      const control = button(label, 'sort-button', () => {
+        sortMode = mode;
+        if (!changeSettings({ sort: mode })) console.warn('[小说段评] 排序偏好未能保存');
+        arrangeComments(true);
+      });
+      control.dataset.sort = mode;
+      sortButtons.append(control);
+    }
+    sortBar.append(sortButtons);
+    arrangeComments(false);
     scroll.append(comments);
     const foot = make('footer', 'panel-foot');
     const settingsButton = button('', 'icon-button settings-button', () => openSettings(), 'settings');
@@ -1067,14 +1255,18 @@ function createUI({
       nav.append(b);
     }
     foot.append(nav);
-    panel.append(scroll, foot);
+    panel.append(sortBar, scroll, foot);
     place();
-    panel.focus({ preventScroll: true });
+    scroll.scrollTop = oldScroll;
+    const restored = oldFocus
+      ? Array.from(panel.querySelectorAll<HTMLElement>('[data-focus]')).find(node => node.dataset.focus === oldFocus)
+      : null;
+    (restored || panel).focus({ preventScroll: true });
   }
 
   function update(patch: Partial<Settings>) {
     saveError = changeSettings(patch) ? '' : '保存失败，修改仅临时生效。';
-    lookKey = `${effSkin()}|${hostLook(win).mode}|${hostLook(win).lite}`;
+    lookKey = `${effSkin()}|${effectiveMode(getSettings(), win)}|${hostLook(win).lite}`;
     updateThemes();
     renderSettings(true);
   }
@@ -1130,6 +1322,26 @@ function createUI({
       grid.append(choice);
     }
     scroll.append(grid, make('p', 'hint', '跟随全局：全局美化是空明 / 格子图纸时用它，选「原生」时用上次选的样式。'));
+    if (isDualSkin(s.skin) && !s.follow) {
+      const skin = s.skin;
+      scroll.append(make('h3', 'section-label', '昼夜模式'));
+      const variants = make('div', 'segmented');
+      for (const [value, label] of [
+        ['day', '日间'],
+        ['night', '夜间'],
+        ['auto', '昼夜自动'],
+      ] as const) {
+        const choice = button(
+          label,
+          '',
+          () => update({ appearance: { ...getSettings().appearance, [skin]: value } }),
+          'appearance-' + value,
+        );
+        choice.setAttribute('aria-pressed', String(s.appearance[skin] === value));
+        variants.append(choice);
+      }
+      scroll.append(variants, make('p', 'hint', '自动按本地时间切换：06:00–18:00 日间，其余时间夜间。'));
+    }
     if (isBp(effSkin())) {
       scroll.append(
         make('p', 'hint', `${BP_SKINS[effSkin() as BlueprintSkin].name}的颜色跟着全局日夜走，配色设置不生效。`),
@@ -1202,6 +1414,44 @@ function createUI({
         ),
       );
     }
+    scroll.append(make('h3', 'section-label', '字体'));
+    const fontRow = make('label', 'font-row', '阅读字体');
+    const select = make('select');
+    select.dataset.focus = 'font';
+    for (const [value, font] of Object.entries(FONTS)) {
+      const option = make('option', '', font.name);
+      option.value = value;
+      select.append(option);
+    }
+    select.value = s.font;
+    select.addEventListener('change', () => update({ font: select.value }));
+    fontRow.append(select);
+    scroll.append(fontRow, make('p', 'hint', '常用字体使用设备已安装版本；未安装时自动使用相近系统字体。'));
+    if (s.font === 'custom') {
+      const urlRow = make('label', 'font-url', '字体网链（TTF / OTF / WOFF2）');
+      const url = make('input');
+      url.type = 'url';
+      url.placeholder = 'https://example.com/font.ttf';
+      url.value = s.fontUrl;
+      url.dataset.focus = 'font-url';
+      const error = make('span', 'hint');
+      error.setAttribute('role', 'status');
+      const apply = button(
+        '应用字体',
+        'soft',
+        () => {
+          const value = validFontUrl(url.value);
+          if (url.value.trim() && !value) {
+            error.textContent = '请输入有效的 HTTP 或 HTTPS 字体直链。';
+            return;
+          }
+          update({ fontUrl: value });
+        },
+        'apply-font',
+      );
+      urlRow.append(url, apply, error);
+      scroll.append(urlRow, make('p', 'hint', '填写允许跨域访问的字体文件直链；加载失败时使用系统字体。'));
+    }
     scroll.append(check('气泡显示标签', 'showTags'));
     const size = make('label', 'range-row', '字号');
     const input = make('input');
@@ -1244,8 +1494,13 @@ function createUI({
     renderSettings();
   }
   function updateThemes() {
+    syncFont();
+    const settings = getSettings();
+    const skin = effectiveSkin(settings, win);
+    const mode = effectiveMode(settings, win);
+    const variables = themeVariables(settings, win, skin, mode);
     for (const host of roots) {
-      if (host.isConnected) applyTheme(host);
+      if (host.isConnected) applyTheme(host, settings, skin, mode, variables);
       else roots.delete(host);
     }
   }
@@ -1253,7 +1508,7 @@ function createUI({
   let lookKey = '';
   function syncLook(force = false) {
     const look = hostLook(win);
-    const key = `${effSkin()}|${look.mode}|${look.lite}`;
+    const key = `${effSkin()}|${effectiveMode(getSettings(), win)}|${look.lite}`;
     if (!force && key === lookKey) return;
     lookKey = key;
     for (const record of allRecords()) {
@@ -1261,7 +1516,8 @@ function createUI({
       root?.querySelector('.bubble')?.replaceWith(makeBubble(record.entry));
     }
     updateThemes();
-    if (active?.kind === 'comments' && active.record.host.isConnected) openComments(active.record, active.trigger);
+    if (active?.kind === 'comments' && active.record.host.isConnected)
+      openComments(active.record, active.trigger, true);
     else if (active?.kind === 'settings') renderSettings(true);
   }
   const keydown = (e: KeyboardEvent) => {
@@ -1273,7 +1529,7 @@ function createUI({
     }
     if (e.key === 'Tab') {
       const focusables = Array.from(
-        layer.querySelectorAll<HTMLElement>('button:not(:disabled), input, [tabindex="0"]'),
+        layer.querySelectorAll<HTMLElement>('button:not(:disabled), input, select, [tabindex="0"]'),
       ).filter(n => !n.hidden && n.tabIndex !== -1);
       const current = overlayRoot.activeElement;
       const first = focusables[0],
@@ -1287,8 +1543,13 @@ function createUI({
       }
     }
   };
+  const checkClock = () => {
+    if (!doc.hidden && isDualSkin(effSkin())) syncLook();
+  };
+  const clockTimer = win.setInterval(checkClock, 60000);
+  doc.addEventListener('visibilitychange', checkClock);
   doc.addEventListener('keydown', keydown, true);
-  lookKey = `${effSkin()}|${hostLook(win).mode}|${hostLook(win).lite}`;
+  lookKey = `${effSkin()}|${effectiveMode(getSettings(), win)}|${hostLook(win).lite}`;
   return {
     createBubble,
     openSettings,
@@ -1313,6 +1574,9 @@ function createUI({
       updateThemes();
     },
     dispose() {
+      win.clearInterval(clockTimer);
+      doc.removeEventListener('visibilitychange', checkClock);
+      customFontStyle.remove();
       activation.dispose();
       closePanel(false);
       doc.removeEventListener('keydown', keydown, true);
@@ -1433,6 +1697,7 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
   host[RUNTIME_KEY]?.dispose();
   let disposed = false;
   let generating = false;
+  let themeFrame = 0;
   let timer = 0;
   let observer: MutationObserver | undefined;
   let ui: ReturnType<typeof createUI>;
@@ -1457,6 +1722,7 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
     if (disposed) return;
     disposed = true;
     host.clearTimeout(timer);
+    if (themeFrame) host.cancelAnimationFrame(themeFrame);
     observer?.disconnect();
     pending.clear();
     for (const subscription of subscriptions) subscription.stop();
@@ -1698,6 +1964,8 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
     }
     listen(events.GENERATION_STARTED, () => {
       generating = true;
+      observer?.disconnect();
+      scanAll = true;
       host.clearTimeout(timer);
       timer = 0;
     });
@@ -1720,8 +1988,13 @@ async function startNovelComments(frame: ScriptWindow, { styleText }: { styleTex
     if (typeof frame.getButtonEvent === 'function') listen(frame.getButtonEvent('段评设置'), () => ui.openSettings());
 
     const themeObserver = new host.MutationObserver(() => {
-      ui.syncLook();
-      if (settings.colorMode === 'follow') ui.updateThemes();
+      if (themeFrame || disposed) return;
+      themeFrame = host.requestAnimationFrame(() => {
+        themeFrame = 0;
+        if (disposed) return;
+        ui.syncLook();
+        if (settings.colorMode === 'follow') ui.updateThemes();
+      });
     });
     themeObserver.observe(doc.documentElement, {
       attributes: true,

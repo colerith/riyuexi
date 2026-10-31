@@ -1,9 +1,28 @@
 import avatarPack from './avatars.pack.txt?raw';
-import { gunzipSync, strFromU8 } from 'fflate';
 
-export const AVATARS = JSON.parse(
-  strFromU8(gunzipSync(Uint8Array.from(atob(avatarPack.trim()), char => char.charCodeAt(0)))),
-) as string[];
+interface AvatarPack {
+  style: string;
+  count: number;
+  data: string;
+}
+const avatarPacks = JSON.parse(avatarPack) as AvatarPack[];
+export const AVATAR_COUNT = avatarPacks.reduce((sum, pack) => sum + pack.count, 0);
+export const AVATAR_STYLES = avatarPacks.map(pack => pack.style);
+export const HOT_COMMENT_LIKES = 2000;
+const decodedPacks = new Map<number, string[]>();
+export function avatarAt(index: number): string {
+  const group = index % avatarPacks.length;
+  const pack = avatarPacks[group];
+  let avatars = decodedPacks.get(group);
+  if (!avatars) {
+    avatars = JSON.parse(pack.data) as string[];
+    decodedPacks.set(group, avatars);
+  }
+  return avatars[Math.floor(index / avatarPacks.length) % pack.count];
+}
+export function avatarCacheSize(): number {
+  return decodedPacks.size;
+}
 export const EMOTIONS: Record<string, readonly string[]> = {
   开心: ['(≧▽≦)', '(｡･ω･｡)', 'ヽ(✿ﾟ▽ﾟ)ノ', '(๑˃̵ᴗ˂̵)و'],
   嗑糖: ['(〃▽〃)', '(*/ω＼*)', '(♡˙︶˙♡)', '(´,,•ω•,,)'],
@@ -116,9 +135,8 @@ export function createCommunityStore(read: () => unknown, write: (data: Communit
   return {
     profile(name) {
       const seed = hash(`${data.seed}|user|${name.trim().normalize('NFKC')}`);
-      const index = seed % AVATARS.length;
-      if (!imageCache.has(index))
-        imageCache.set(index, `data:image/svg+xml;charset=utf-8,${encodeURIComponent(AVATARS[index])}`);
+      const index = seed % AVATAR_COUNT;
+      if (!imageCache.has(index)) imageCache.set(index, avatarAt(index));
       return { avatar: imageCache.get(index)!, level: 1 + (seed % 9), color: hash(`${name}|badge`) % 5 };
     },
     comment(key) {

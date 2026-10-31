@@ -18,7 +18,7 @@ export async function writeArtifacts(code, sourceDir, outputRoot) {
     name: `日月西-段评美化（${mode}）`,
     id: 'fc9962b6-e3d1-445c-9a0e-106a5d104208',
     content,
-    info: `v${version}；本地版与网络版只启用一个。内置240张头像；点赞、日期及等级为本地模拟评论展示。`,
+    info: `v${version}；本地版与网络版只启用一个。内置320张头像；点赞、日期及等级为本地模拟评论展示。`,
     button: { enabled: true, buttons: [{ name: '段评设置', visible: true }] },
     data: {},
     export_with: { data: true, button: true },
@@ -30,12 +30,12 @@ export async function writeArtifacts(code, sourceDir, outputRoot) {
     'novel-comments-network.js': network,
     'novel-comments-network.json': JSON.stringify(script(network, '网络'), null, 2) + '\n',
   };
-  for (const name of ['提示词.txt', 'AVATAR-LICENSE.txt', 'FFLATE-LICENSE.txt'])
+  for (const name of ['提示词.txt', 'AVATAR-LICENSE.txt'])
     files[name] = await fs.readFile(path.join(sourceDir, name), 'utf8');
   for (const [name, value] of Object.entries(files)) await fs.writeFile(path.join(dir, name), value);
   const manifest = {
     version,
-    avatars: 240,
+    avatars: 320,
     sha256: createHash('sha256').update(code).digest('hex'),
     files: Object.fromEntries(
       Object.entries(files).map(([name, value]) => [
