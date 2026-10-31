@@ -235,6 +235,7 @@ export interface StorageData {
   mvuAutoEnabled?: boolean;
   toolInputEnabled?: boolean;
   toolInputMode?: 'single-shot' | 'two-stage';
+  toolOutputEnabled?: boolean;
   prefillOverrides?: Record<string, boolean>;
   /** 单调递增的持久化时间戳，用于从多份备份中选择最新配置。 */
   storageRevision?: number;

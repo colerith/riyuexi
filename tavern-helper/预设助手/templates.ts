@@ -141,17 +141,22 @@ export const panelHtml = `
                     </section>
                     <section class="panel-settings-card">
                         <div class="panel-setting-row">
-                            <div><strong>工具调用开关</strong><small>默认关闭。将本轮输入作为工具读取结果发送，只改请求副本，不修改聊天原文。</small></div>
+                            <div><strong>工具调用开关</strong><small>默认关闭。按提示词后处理规则，将末尾输入段（可能含尾部词条）作为工具结果发送。只改请求副本，不修改聊天原文。</small></div>
                             <button class="panel-setting-switch" type="button" role="switch" aria-label="工具调用开关" data-tool-input-toggle aria-checked="false"><span></span></button>
                         </div>
                         <div class="panel-theme-mode-field">
                             <label for="panel-tool-input-mode">工具读取模式</label>
                             <select id="panel-tool-input-mode" aria-label="工具读取模式">
-                                <option value="single-shot">单次 · 每轮一次请求</option>
-                                <option value="two-stage">两阶段 · 每轮多一次请求</option>
+                                <option value="single-shot">合成读取 · 一次请求</option>
+                                <option value="two-stage">真实读取 · 两次请求</option>
                             </select>
-                            <small>两阶段仅支持 OpenAI、自定义 OpenAI 兼容和 OpenRouter。预填充、其他工具或不兼容模型等情况会跳过处理并提示原因。</small>
+                            <small>真实读取先发送独立握手，不携带聊天正文、预设或世界书。仅支持 OpenAI、自定义 OpenAI 兼容和 OpenRouter。</small>
                         </div>
+                        <div class="panel-setting-row">
+                            <div><strong>正文工具交付</strong><small>默认关闭，可独立开启。收齐函数参数后一次显示正文；支持续写。只支持 OpenAI 兼容来源，不增加输出上限，也不能修复断线。</small></div>
+                            <button class="panel-setting-switch" type="button" role="switch" aria-label="正文工具交付" data-tool-output-toggle aria-checked="false"><span></span></button>
+                        </div>
+                        <p class="panel-settings-note">开启后，不兼容或包装失败会停止本轮，不自动改发原文或重试。完整的普通文本回复仍可交付；MMDB 抗截断模型与独立蓝图脚本启用时自动让路。</p>
                         <p class="panel-settings-note" data-tool-input-status role="status" aria-live="polite"></p>
                     </section>
                     <section class="panel-settings-card">

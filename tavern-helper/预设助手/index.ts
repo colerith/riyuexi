@@ -113,6 +113,10 @@ function renderToolInputSettings() {
   if (!panel) return;
   const state = toolInputController?.getState();
   panel
+    .find('[data-tool-output-toggle]')
+    .attr('aria-checked', String(state ? state.outputEnabled : storage.toolOutputEnabled === true))
+    .prop('disabled', !state || state.busy > 0);
+  panel
     .find('[data-tool-input-toggle]')
     .attr('aria-checked', String(state ? state.mode !== 'off' : storage.toolInputEnabled === true))
     .prop('disabled', !state || state.busy > 0);
@@ -140,6 +144,11 @@ async function initializeToolInput() {
             : 'single-shot'
           : 'off',
       isDisposed: () => toolInputDisposed,
+      outputEnabled: storage.toolOutputEnabled === true,
+      onOutputChange: enabled => {
+        storage.toolOutputEnabled = enabled;
+        saveStorage();
+      },
       onModeChange: mode => {
         storage.toolInputEnabled = mode !== 'off';
         if (mode !== 'off') storage.toolInputMode = mode;
@@ -638,6 +647,14 @@ function bindPanelEvents() {
   panel.on('click', '[data-tool-input-toggle]', () => {
     const enabled = toolInputController?.getState().mode !== 'off';
     setToolInputMode(enabled ? 'off' : storage.toolInputMode === 'two-stage' ? 'two-stage' : 'single-shot');
+  });
+  panel.on('click', '[data-tool-output-toggle]', () => {
+    try {
+      if (toolInputController) toolInputController.setOutput(!toolInputController.getState().outputEnabled);
+    } catch (error) {
+      toastr.warning(error instanceof Error ? error.message : String(error));
+    }
+    renderToolInputSettings();
   });
   panel.on('change', '#panel-tool-input-mode', event => {
     const mode = String($(event.currentTarget).val());

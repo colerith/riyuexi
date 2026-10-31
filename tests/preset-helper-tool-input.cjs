@@ -58,7 +58,6 @@ async function setup(mode = 'single-shot', fetchImpl = async () => new Response(
   };
   const controller = await exportsObject.registerToolInput({
     host,
-    openai: oai,
     mode,
     onModeChange: value => saved.push(value),
   });
@@ -78,193 +77,216 @@ async function setup(mode = 'single-shot', fetchImpl = async () => new Response(
   return { host, ctx, flat, oai, bus, controller, request, run, warnings, saved };
 }
 
+const endpoint = '/api/backends/chat-completions/generate';
+const completion = (message, reason = 'stop') => ({ choices: [{ index: 0, message, finish_reason: reason }] });
+const plain = () => Response.json(completion({ role: 'assistant', content: '正文' }));
+const send = (s, data, signal) => s.host.fetch(endpoint, { method: 'POST', body: JSON.stringify(s.run(data)), signal });
 (async () => {
-  const compatible = await setup();
-  compatible.controller.dispose();
-  compatible.host.SillyTavern = compatible.ctx;
-  compatible.host.Function = () => {
-    throw Error('Internal imports blocked');
+  const sent = [];
+  const originalFetch = async (_url, init) => {
+    sent.push(JSON.parse(init.body));
+    return plain();
   };
-  compatible.host.crypto = undefined;
-  const publicController = await exportsObject.registerToolInput({
-    host: compatible.host,
-    mode: 'single-shot',
-    onModeChange() {},
-  });
-  const publicRequest = compatible.run(compatible.request());
-  assert.equal(publicRequest.messages.find(message => message.role === 'tool').content, '真实输入');
-  assert.equal(publicRequest.messages.at(-1).content, '尾部规则');
-  const repeated = compatible.request();
-  repeated.messages.push({ role: 'user', content: '真实输入' });
-  const originalRepeated = clone(repeated);
-  compatible.run(repeated);
-  assert.deepEqual(repeated, originalRepeated, 'unidentified ambiguous input must remain untouched');
-  publicController.dispose();
-  assert.equal(compatible.bus.eventNames().length, 0);
-  const s = await setup();
-  const before = clone(s.flat),
-    data = s.run(s.request());
-  assert.equal(s.controller.version, '2.4.0');
-  assert.equal(data.messages.find(message => message.role === 'tool').content, '真实输入');
-  assert.deepEqual(s.flat, before, 'request rewriting must not mutate PromptManager');
-  assert.equal(data.messages.at(-1).content, '尾部规则');
-  assert.equal(data.messages[2].content, '练习注入内容超过八个字');
-  assert.equal(data.custom_prompt_post_processing, 'strict_tools');
-  assert.equal(data.tool_choice, 'none');
-  assert.equal(data.messages.filter(message => message.tool_calls).length, 1);
-  const once = clone(data);
-  s.run(data);
-  assert.deepEqual(clone(data), once, 'already wrapped messages must not be wrapped again');
-
-  s.ctx.chat.push({ is_user: false, mes: '正在重写的回复' });
-  assert.ok(s.run(s.request({ type: 'swipe' })).messages.some(message => message.role === 'tool'));
-  const noInput = s.request(),
-    unchanged = clone(noInput);
-  s.run(noInput);
-  assert.deepEqual(noInput, unchanged, 'assistant-ended chat has no fresh user input');
-  s.ctx.chat.pop();
-
-  // Non-dry-run snapshot must survive token-count/preview prompt replacement.
-  const snapshotRequest = s.request({ type: 'regenerate' });
-  s.bus.emit('prompt', { chat: snapshotRequest.messages });
-  s.oai.promptManager.messages = { collection: [{ role: 'assistant', content: '干跑', identifier: 'chatHistory-0' }] };
-  s.bus.emit('prompt', { chat: [], dryRun: true });
-  s.bus.emit('ready', snapshotRequest);
-  assert.ok(snapshotRequest.messages.some(message => message.role === 'tool'));
-  s.oai.promptManager.messages = { collection: s.flat };
+  const s = await setup('single-shot', originalFetch);
+  assert.equal(s.controller.version, '3.2.1');
+  s.host.SillyTavern = s.ctx;
+  s.host.Function = () => {
+    throw Error('Forbidden internal module import');
+  };
+  s.host.crypto = {
+    randomUUID() {
+      throw Error('insecure origin');
+    },
+    getRandomValues() {
+      throw Error('unavailable');
+    },
+  };
+  const messages = [
+    { role: 'system', content: '系统' },
+    { role: 'assistant', content: '上文' },
+    { role: 'user', content: '真实输入' },
+    { role: 'system', content: '尾部规则' },
+  ];
+  const before = clone(messages);
+  await send(s, s.request({ messages }));
+  assert.deepEqual(messages, before, 'original messages remain unchanged');
+  assert.equal(sent[0].messages.at(-1).role, 'tool');
+  assert.equal(sent[0].messages.at(-1).content, '真实输入\n\n尾部规则');
+  assert.equal(sent[0].custom_prompt_post_processing, 'strict_tools');
+  assert.equal(sent[0].__preset_helper_tool_transport, undefined);
+  assert.equal(sent[0].tool_choice, 'none');
 
   const image = { type: 'image_url', image_url: { url: 'data:image/png;base64,AA==' } };
-  s.flat[1].content = [{ type: 'text', text: '真实输入' }, image];
-  const multimodal = s.run(s.request({ model: 'gemini-3-pro' }));
-  assert.deepEqual(clone(multimodal.messages[1].content[1]), image);
+  await send(
+    s,
+    s.request({
+      model: 'gemini-3-pro',
+      messages: [messages[0], { role: 'user', content: [{ type: 'text', text: '图片问题' }, image] }],
+    }),
+  );
+  assert.deepEqual(sent.at(-1).messages[1].content[1], image);
   assert.equal(
-    multimodal.messages.find(message => message.tool_calls).tool_calls[0].extra_content.google.thought_signature,
+    sent.at(-1).messages.at(-2).tool_calls[0].extra_content.google.thought_signature,
     'skip_thought_signature_validator',
   );
-  s.flat[1].content = '真实输入';
-
-  s.ctx.chat[0].mes = '{{user}}的输入';
-  s.flat[1].content = '玩家：测试用户的输入';
-  assert.equal(s.run(s.request()).messages.find(message => message.role === 'tool').content, '玩家：测试用户的输入');
-  s.ctx.chat[0].mes = '真实输入';
-  s.flat[1].content = '真实输入';
-
+  for (const processing of ['none', 'merge', 'semi', 'strict']) {
+    await send(s, s.request({ messages, custom_prompt_post_processing: processing }));
+    assert.equal(
+      sent.at(-1).messages.at(-1).content,
+      ['semi', 'strict'].includes(processing) ? '真实输入\n\n尾部规则' : '真实输入',
+    );
+  }
+  const countBeforeFailures = sent.length;
   for (const overrides of [
     { tools: [{ type: 'function' }] },
-    { assistant_prefill: '<electric>' },
     { json_schema: {} },
-    { type: 'quiet' },
-    { enable_web_search: true, chat_completion_source: 'makersuite' },
+    { assistant_prefill: '<electric>' },
+    { chat_completion_source: 'makersuite', enable_web_search: true },
+    { messages: [{ role: 'tool', tool_call_id: 'external', content: 'already wrapped' }] },
   ]) {
-    const request = s.request(overrides),
-      original = clone(request);
-    s.run(request);
-    assert.deepEqual(request, original, 'incompatible requests must pass through untouched');
+    await assert.rejects(send(s, s.request(overrides)));
   }
-  s.host.__blueprintToolInput = { getState: () => ({ mode: 'two-stage' }) };
-  const duplicate = s.request(),
-    originalDuplicate = clone(duplicate);
-  s.run(duplicate);
-  assert.deepEqual(duplicate, originalDuplicate, 'standalone tool-input script takes precedence');
+  assert.equal(sent.length, countBeforeFailures, 'invalid wrapping must stop before sending, without raw retry');
+  const mmdb = s.request({ model: 'Gemini 抗截断' }),
+    original = clone(mmdb);
+  s.run(mmdb);
+  assert.deepEqual(mmdb, original);
+  s.host.__blueprintToolInput = { getState: () => ({ mode: 'off', outputEnabled: true }) };
+  const external = s.request(),
+    originalExternal = clone(external);
+  s.run(external);
+  assert.deepEqual(external, originalExternal);
   delete s.host.__blueprintToolInput;
   s.controller.setMode('off');
-  const off = s.request(),
-    originalOff = clone(off);
-  s.run(off);
-  assert.deepEqual(off, originalOff);
-  assert.deepEqual(s.saved, ['off']);
+  assert.equal(s.host.fetch, originalFetch);
   s.controller.dispose();
   assert.equal(s.bus.eventNames().length, 0);
 
-  const sent = [];
-  let rejectHandshake = false;
-  const originalFetch = async (url, init) => {
+  const stages = [];
+  let invalid = false;
+  const two = await setup('two-stage', async (_url, init) => {
     const body = JSON.parse(init.body);
-    sent.push(body);
-    assert.equal(body.__blueprint_tool_input, undefined);
+    stages.push(body);
     if (typeof body.tool_choice === 'object') {
-      const reference = body.messages[1].content;
-      const requestId = reference.match(/引用 ([a-f0-9]+)/)[1];
-      return Response.json({
-        choices: [
+      assert.equal(body.messages.length, 1);
+      assert.equal(body.max_tokens, 1024);
+      assert.equal(body.stop, undefined);
+      assert.equal(body.max_completion_tokens, undefined);
+      assert.equal(body.stream, false);
+      assert.ok(!JSON.stringify(body.messages).includes('秘密世界书'));
+      const id = body.messages[0].content.match(/request_id "([a-f0-9]+)"/)[1];
+      return Response.json(
+        completion(
           {
-            message: {
-              role: 'assistant',
-              content: null,
-              reasoning_content: '原始推理字段',
-              tool_calls: [
-                {
-                  id: 'real-call',
-                  type: 'function',
-                  signature: '真实签名',
-                  function: {
-                    name: 'blueprint_read_input',
-                    arguments: JSON.stringify({ request_id: rejectHandshake ? 'wrong' : requestId }),
-                  },
+            role: 'assistant',
+            content: null,
+            reasoning_content: '真实推理字段',
+            tool_calls: [
+              {
+                id: 'real-call',
+                type: 'function',
+                signature: 'signature',
+                function: {
+                  name: 'blueprint_read_input',
+                  arguments: JSON.stringify({ request_id: invalid ? 'wrong' : id }),
                 },
-              ],
-            },
+              },
+            ],
           },
-        ],
-      });
+          'tool_calls',
+        ),
+      );
     }
-    return new Response('data: original-stream\n\n', { headers: { 'Content-Type': 'text/event-stream' } });
-  };
-  const two = await setup('two-stage', originalFetch);
-  const response = await two.host.fetch('/api/backends/chat-completions/generate', {
-    method: 'POST',
-    body: JSON.stringify(two.run(two.request())),
+    return plain();
   });
-  assert.equal(await response.text(), 'data: original-stream\n\n');
-  assert.equal(sent.length, 2);
-  assert.equal(sent[0].stream, false);
-  assert.equal(sent[1].messages.find(message => message.tool_calls).tool_calls[0].signature, '真实签名');
-  assert.equal(sent[1].messages.find(message => message.tool_calls).reasoning_content, '原始推理字段');
-  assert.equal(sent[1].messages.at(-1).content, '尾部规则');
-  assert.equal(two.controller.getState().busy, 0);
-  rejectHandshake = true;
-  await assert.rejects(
-    two.host.fetch('/api/backends/chat-completions/generate', {
-      method: 'POST',
-      body: JSON.stringify(two.run(two.request())),
+  await send(
+    two,
+    two.request({
+      messages: [
+        { role: 'system', content: '秘密世界书' },
+        { role: 'user', content: '秘密输入' },
+      ],
+      stop: ['x'],
+      max_completion_tokens: 9000,
     }),
-    /request_id 不匹配/,
   );
-  assert.equal(sent.length, 3, 'failed handshake must not send second request');
-  assert.equal(two.controller.getState().busy, 0);
-  two.controller.setMode('off');
-  assert.equal(two.host.fetch, originalFetch);
+  assert.equal(stages.length, 2);
+  assert.equal(stages[1].messages.at(-2).tool_calls[0].signature, 'signature');
+  assert.equal(stages[1].messages.at(-2).reasoning_content, '真实推理字段');
+  invalid = true;
+  await assert.rejects(send(two, two.request()), /request_id/);
+  assert.equal(stages.length, 3);
   two.controller.dispose();
-  assert.equal(two.bus.eventNames().length, 0);
+
+  let answer = completion(
+    {
+      role: 'assistant',
+      content: null,
+      tool_calls: [
+        {
+          type: 'function',
+          function: { name: 'blueprint_emit_answer', arguments: JSON.stringify({ content: '第一段\n第二段' }) },
+        },
+      ],
+    },
+    'tool_calls',
+  );
+  const requests = [];
+  const out = await setup('off', async (_url, init) => {
+    requests.push(JSON.parse(init.body));
+    return Response.json(answer);
+  });
+  out.controller.setOutput(true);
+  const decoded = await (await send(out, out.request({ type: 'continue' }))).json();
+  assert.equal(decoded.choices[0].message.content, '第一段\n第二段');
+  assert.equal(decoded.choices[0].message.tool_calls, undefined);
+  assert.equal(requests[0].stream, false);
+  assert.equal(requests[0].tool_choice, 'auto');
+  assert.ok(requests[0].messages[0].content.includes('客户端响应协议'));
+  assert.equal(requests[0].tools.length, 1, 'output only does not wrap input');
+  const sse = await (await send(out, out.request({ stream: true }))).text();
+  assert.ok(sse.includes('第一段\\n第二段'));
+  assert.ok(sse.endsWith('data: [DONE]\n\n'));
+  assert.ok(!sse.includes('tool_calls'));
+  answer = completion({ role: 'assistant', content: '普通完整正文' });
+  assert.equal((await (await send(out, out.request())).json()).choices[0].message.content, '普通完整正文');
+  assert.match(out.controller.describeLast(), /未用正文工具/);
+  answer = completion({ role: 'assistant', content: '截断正文' }, 'length');
+  const attempts = requests.length;
+  await assert.rejects(send(out, out.request()), /未完整结束/);
+  assert.equal(requests.length, attempts + 1);
+  answer = completion(
+    {
+      role: 'assistant',
+      content: null,
+      tool_calls: [{ type: 'function', function: { name: 'blueprint_emit_answer', arguments: '{"content":' } }],
+    },
+    'tool_calls',
+  );
+  await assert.rejects(send(out, out.request()), /参数不完整/);
+  out.controller.dispose();
 
   let started;
-  const handshakeStarted = new Promise(resolve => {
+  const ready = new Promise(resolve => {
     started = resolve;
   });
-  const abortableFetch = (_url, init) =>
-    new Promise((_resolve, reject) => {
-      init.signal.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError')), { once: true });
-      started();
-    });
-  const cancel = await setup('off');
-  // Hook captures the current fetch on activation, preserving plugins loaded after initialization.
-  cancel.host.fetch = abortableFetch;
-  cancel.controller.setMode('two-stage');
-  const pending = cancel.host.fetch('/api/backends/chat-completions/generate', {
-    method: 'POST',
-    body: JSON.stringify(cancel.run(cancel.request())),
-  });
-  await handshakeStarted;
-  assert.equal(cancel.controller.getState().busy, 1);
-  assert.throws(() => cancel.controller.setMode('off'), /请等本轮完成/);
+  const cancel = await setup(
+    'two-stage',
+    (_url, init) =>
+      new Promise((_resolve, reject) => {
+        init.signal.addEventListener('abort', () => reject(new DOMException('stop', 'AbortError')), { once: true });
+        started();
+      }),
+  );
+  const pending = send(cancel, cancel.request());
+  await ready;
+  assert.throws(() => cancel.controller.setOutput(true), /请等/);
   cancel.bus.emit('stop');
   await assert.rejects(pending, { name: 'AbortError' });
   assert.equal(cancel.controller.getState().busy, 0);
   cancel.controller.dispose();
-  assert.equal(cancel.host.fetch, abortableFetch);
-  assert.equal(cancel.bus.eventNames().length, 0);
   console.log(
-    'PASS: v2.4 real-input matching, swipe/snapshot, multimodal/tail preservation, skips, modes, handshake and cleanup',
+    'PASS: v3.2.1 tail layout, isolated handshake, output JSON/SSE, plain fallback, fail-closed, MMDB, compatibility and cancellation',
   );
 })().catch(error => {
   console.error(error);
