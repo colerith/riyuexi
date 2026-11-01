@@ -240,6 +240,33 @@ export const BUILTIN_QUICK_SWITCH_SCHEMES: BuiltinQuickSwitchScheme[] = [
     ],
   },
   {
+    name: '🔒预设头部',
+    section: '功能定制',
+    type: 'customize',
+    customize: {
+      groups: [
+        {
+          groupName: '🔒预设头部',
+          autoExclude: {
+            actionRules: false,
+
+            // 必须保留分区起始条目，否则无法识别“✶ ·xxx·✶”
+            emptyPrompts: false,
+          },
+        },
+      ],
+
+      // 只读取这些前缀，并在面板中隐藏前缀
+      itemPrefixes: ['🔒', '🔥', '🫶', '🩸', '🔫', '⚖️'],
+      sectionDescriptions: {
+        头部破限: 'vertex渠道不要开，pg渠道按情况选择，自定义混淆需自己填写内容',
+        身份定义: '推荐，二选一开，如果出现标记提醒/路由就关掉',
+        最高要求: '根据自身情况来选择即可',
+        预设模式: '必选，二选一开',
+      },
+    },
+  },
+  {
     name: '🪐世界引擎',
     section: '功能定制',
     type: 'customize',
@@ -426,6 +453,58 @@ export const BUILTIN_QUICK_SWITCH_SCHEMES: BuiltinQuickSwitchScheme[] = [
     },
   },
   {
+    name: '💡预设思维',
+    section: '功能定制',
+    type: 'customize',
+    customize: {
+      groups: [
+        {
+          groupName: '💡预设思维',
+
+          excludeRules: [{ nameIncludes: '人物一键开关' }],
+
+          autoExclude: {
+            actionRules: false,
+
+            // 必须保留分区起始条目，否则无法识别“✶ ·xxx·✶”
+            emptyPrompts: false,
+          },
+        },
+      ],
+
+      // 只读取这些前缀，并在面板中隐藏前缀
+      itemPrefixes: ['💧', '❄️', '┌⚓', '│🔸', '│🔹', '└🔸', '└🔹', '┌💎', '│💎', '└💎'],
+
+      // 在面板中隐藏这些后缀
+      itemSuffixes: ['┘', '┐', '│'],
+    },
+  },
+  {
+    name: '🔒预设尾部',
+    section: '功能定制',
+    type: 'customize',
+    customize: {
+      groups: [
+        {
+          groupName: '🔒预设尾部',
+          autoExclude: {
+            actionRules: false,
+
+            // 必须保留分区起始条目，否则无法识别“✶ ·xxx·✶”
+            emptyPrompts: false,
+          },
+        },
+      ],
+
+      // 只读取这些前缀，并在面板中隐藏前缀
+      itemPrefixes: ['👑', '🔗'],
+      sectionDescriptions: {
+        防止截断: '一般不要开，截断再开，非流/假流选非流抗截断，流式选流式抗截断，不能完全解决截断问题',
+        尾部破限: 'vertex渠道可不开，pg渠道出现相关道歉时可关闭，多选一开',
+      },
+    },
+  },
+  {
     name: '🌙日月摘要',
     section: '装饰组件',
     type: 'toggle',
@@ -473,6 +552,7 @@ export const BUILTIN_QUICK_SWITCH_SCHEMES: BuiltinQuickSwitchScheme[] = [
   },
   {
     name: '🐦文末论坛',
+    discussion: true,
     section: '装饰组件',
     type: 'toggle',
     defaultEnabled: true,
@@ -530,33 +610,6 @@ export const BUILTIN_QUICK_SWITCH_SCHEMES: BuiltinQuickSwitchScheme[] = [
     },
     off: {
       rules: [{ nameIncludes: '极光剧场提醒', enabled: false }],
-    },
-  },
-  {
-    name: '💡预设思维',
-    section: '功能定制',
-    type: 'customize',
-    customize: {
-      groups: [
-        {
-          groupName: '💡预设思维',
-
-          excludeRules: [{ nameIncludes: '人物一键开关' }],
-
-          autoExclude: {
-            actionRules: false,
-
-            // 必须保留分区起始条目，否则无法识别“✶ ·xxx·✶”
-            emptyPrompts: false,
-          },
-        },
-      ],
-
-      // 只读取这些前缀，并在面板中隐藏前缀
-      itemPrefixes: ['💧', '❄️', '┌⚓', '│🔸', '│🔹', '└🔸', '└🔹', '┌💎', '│💎', '└💎'],
-
-      // 在面板中隐藏这些后缀
-      itemSuffixes: ['┘', '┐', '│'],
     },
   },
 ];

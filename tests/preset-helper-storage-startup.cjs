@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const ts = require('typescript');
-const code = ts.transpileModule(fs.readFileSync('tavern-helper/预设助手/persistence.ts', 'utf8'), {
+const code = ts.transpileModule(fs.readFileSync('src/util/酒馆助手脚本/预设助手/persistence.ts', 'utf8'), {
   compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
 }).outputText;
 

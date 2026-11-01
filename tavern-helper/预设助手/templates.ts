@@ -156,7 +156,7 @@ export const panelHtml = `
                             <div><strong>正文工具交付</strong><small>默认关闭，可独立开启。收齐函数参数后一次显示正文；支持续写。只支持 OpenAI 兼容来源，不增加输出上限，也不能修复断线。</small></div>
                             <button class="panel-setting-switch" type="button" role="switch" aria-label="正文工具交付" data-tool-output-toggle aria-checked="false"><span></span></button>
                         </div>
-                        <p class="panel-settings-note">开启后，不兼容或包装失败会停止本轮，不自动改发原文或重试。完整的普通文本回复仍可交付；MMDB 抗截断模型与独立蓝图脚本启用时自动让路。</p>
+                        <p class="panel-settings-note">使用日月西时，默认设为严格（不含工具）。开启输入或正文工具交付时，自动将合并、半严格、严格切换为对应的“含工具”选项并保存；两项都关闭后切回严格（不含工具）。不兼容或包装失败会停止本轮，不自动改发原文或重试。完整的普通文本回复仍可交付。</p>
                         <p class="panel-settings-note" data-tool-input-status role="status" aria-live="polite"></p>
                     </section>
                     <section class="panel-settings-card">
@@ -1060,6 +1060,29 @@ ${mewoSummaryCss}
         background: var(--panel-border);
         opacity: 0.75;
     }
+    .discussion-card { position:relative; }
+    .discussion-picker { position:relative; flex-shrink:0; }
+    .discussion-picker summary { display:flex; align-items:center; justify-content:center; gap:8px; min-height:34px; padding:6px 12px; border:1px solid var(--panel-border); border-radius:999px; background:var(--panel-soft-module); color:var(--panel-text-main); font-size:.85em; cursor:pointer; list-style:none; white-space:nowrap; }
+    .discussion-picker summary::-webkit-details-marker { display:none; }
+    .discussion-picker summary i { font-size:10px; }
+    .discussion-picker[open] summary { border-color:var(--highlight-border); }
+    .discussion-modes { position:absolute; right:0; top:calc(100% + 6px); z-index:20; display:grid; gap:4px; min-width:136px; padding:6px; border:1px solid var(--panel-border); border-radius:10px; background:var(--panel-bg); box-shadow:0 8px 20px #0002; }
+    .discussion-modes button { text-align:left; padding:8px 12px; border:1px solid transparent; border-radius:6px; background:var(--panel-soft-module); color:var(--panel-text-main); font-size:.9em; }
+    .discussion-modes button[aria-pressed="true"] { border-color:var(--highlight-border); background:var(--highlight-bg); }
+    .discussion-picker summary:focus-visible { outline:2px solid var(--panel-text-accent); outline-offset:3px; }
+    .discussion-bindings { display:grid; gap:14px; }
+    .discussion-bindings label { display:grid; gap:7px; color:var(--panel-text-main); }
+    .discussion-overlay .discussion-bindings select,.discussion-overlay .discussion-add select { width:100%; min-width:0; padding:10px; border:1px solid var(--panel-border); border-radius:8px; background:var(--panel-soft-module); color:var(--panel-text-main); }
+    .discussion-add { display:flex; gap:8px; margin:12px 0; }
+    .discussion-add button { flex-shrink:0; }
+    .discussion-error { color:var(--panel-text-main); font-weight:600; }
+    .discussion-overlay .discussion-groups input { appearance:auto !important; -webkit-appearance:checkbox !important; opacity:1; position:static; accent-color:var(--highlight-border); width:18px; height:18px; flex-shrink:0; }
+    .discussion-groups .qs-sub-name { overflow-wrap:anywhere; white-space:normal; }
+    .discussion-overlay .panel-content { overflow-y:auto; }
+    .discussion-overlay :is(button,select,input):focus-visible,.discussion-card button:focus-visible { outline:2px solid var(--panel-text-accent); outline-offset:3px; }
+    .discussion-overlay .discussion-save { background:var(--panel-text-accent); color:var(--panel-bg); }
+    .discussion-overlay .discussion-bindings select,.discussion-overlay .discussion-add select { appearance:auto !important; -webkit-appearance:menulist !important; }
+
     .quick-switch-row {
         display: flex;
         align-items: center;

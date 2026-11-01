@@ -10,7 +10,7 @@ export interface ChangelogEntry {
   bodyHtml: string;
 }
 
-export const CURRENT_CHANGELOG_VERSION = edition;
+export const CURRENT_CHANGELOG_VERSION = edition === '0.42' ? '0.42' : newChangelogs[0].version;
 
 export const CHANGELOGS: ChangelogEntry[] = [
   ...newChangelogs.filter(entry => edition === '1.0' || entry.version === '0.42'),

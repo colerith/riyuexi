@@ -12,7 +12,7 @@ if (typeof vm.SyntheticModule !== 'function') {
 const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
 const ts = require('typescript');
-const folder = process.argv[2] || 'file';
+const folder = process.argv[2] || 'release/预设助手/preset-helper-v1.0.9-git';
 const manifestName = process.argv[3] || 'preset-helper-release-v1.json';
 const manifest = fs.existsSync(`${folder}/${manifestName}`)
   ? `${folder}/${manifestName}`

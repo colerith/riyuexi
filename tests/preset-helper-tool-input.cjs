@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 const { EventEmitter } = require('node:events');
 const { webcrypto } = require('node:crypto');
-const source = fs.readFileSync('tavern-helper/预设助手/toolInput.ts', 'utf8');
+const source = fs.readFileSync('src/util/酒馆助手脚本/预设助手/toolInput.ts', 'utf8');
 const exportsObject = {};
 vm.runInNewContext(
   ts.transpileModule(source, {
@@ -18,6 +18,8 @@ const events = {
   CHAT_COMPLETION_PROMPT_READY: 'prompt',
   GENERATION_STOPPED: 'stop',
   CHAT_CHANGED: 'chat',
+  SETTINGS_UPDATED: 'settings',
+  CHATCOMPLETION_PRESET_CHANGED: 'preset',
 };
 
 async function setup(mode = 'single-shot', fetchImpl = async () => new Response('unused')) {
@@ -82,6 +84,83 @@ const completion = (message, reason = 'stop') => ({ choices: [{ index: 0, messag
 const plain = () => Response.json(completion({ role: 'assistant', content: '正文' }));
 const send = (s, data, signal) => s.host.fetch(endpoint, { method: 'POST', body: JSON.stringify(s.run(data)), signal });
 (async () => {
+  const { JSDOM } = require('jsdom');
+  const ui = await setup('off');
+  const dom = new JSDOM(
+    '<select id="custom_prompt_post_processing"><option value="">无</option><option value="strict">严格</option><option value="strict_tools">严格（含工具）</option><option value="semi">半严格</option><option value="semi_tools">半严格（含工具）</option><option value="merge">合并</option><option value="merge_tools">合并（含工具）</option></select>',
+  );
+  ui.host.document = dom.window.document;
+  ui.host.Event = dom.window.Event;
+  const select = dom.window.document.querySelector('select');
+  let persisted = 0;
+  select.addEventListener('change', () => {
+    ui.ctx.chatCompletionSettings.custom_prompt_post_processing = select.value;
+    persisted++;
+    ui.bus.emit('settings');
+  });
+  for (const value of ['strict', 'semi', 'merge']) {
+    ui.controller.setMode('off');
+    ui.ctx.chatCompletionSettings.custom_prompt_post_processing = value;
+    select.value = value;
+    ui.controller.setMode('single-shot');
+    assert.equal(select.value, value + '_tools');
+    assert.equal(ui.ctx.chatCompletionSettings.custom_prompt_post_processing, value + '_tools');
+  }
+  assert.equal(persisted, 6, 'save through native change handler without settings-event recursion');
+  ui.controller.setMode('off');
+  assert.equal(select.value, 'strict', 'turning both features off restores strict without tools');
+  ui.ctx.chatCompletionSettings.custom_prompt_post_processing = 'strict';
+  select.value = 'strict';
+  ui.controller.setOutput(true);
+  assert.equal(select.value, 'strict_tools');
+  ui.ctx.chatCompletionSettings.custom_prompt_post_processing = 'semi';
+  select.value = 'semi';
+  ui.bus.emit('preset');
+  assert.equal(select.value, 'semi_tools');
+  ui.ctx.chatCompletionSettings.custom_prompt_post_processing = '';
+  select.value = '';
+  ui.bus.emit('settings');
+  assert.equal(select.value, '');
+  ui.controller.dispose();
+  assert.equal(ui.bus.eventNames().length, 0);
+  ui.ctx.chatCompletionSettings.custom_prompt_post_processing = 'strict';
+  select.value = 'strict';
+  const reloaded = await exportsObject.registerToolInput({ host: ui.host, mode: 'single-shot', onModeChange() {} });
+  assert.equal(select.value, 'strict_tools', 'saved enabled mode synchronizes at startup');
+  reloaded.setOutput(true);
+  reloaded.setMode('off');
+  assert.equal(select.value, 'strict_tools', 'output still needs tool support');
+  reloaded.setOutput(false);
+  assert.equal(select.value, 'strict');
+  reloaded.dispose();
+  let presetName = '日月西 v1.0';
+  ui.ctx.chatCompletionSettings.custom_prompt_post_processing = 'merge_tools';
+  select.value = 'merge_tools';
+  const defaults = await exportsObject.registerToolInput({
+    host: ui.host,
+    mode: 'off',
+    getPresetName: () => presetName,
+    onModeChange() {},
+  });
+  assert.equal(select.value, 'strict', 'Riyuexi starts in strict mode without tools');
+  presetName = '其他预设';
+  ui.ctx.chatCompletionSettings.custom_prompt_post_processing = 'semi';
+  select.value = 'semi';
+  ui.bus.emit('preset');
+  assert.equal(select.value, 'semi', 'other presets keep their default');
+  presetName = '日月西';
+  ui.bus.emit('preset');
+  assert.equal(select.value, 'strict');
+  defaults.setMode('single-shot');
+  assert.equal(select.value, 'strict_tools');
+  ui.ctx.chatCompletionSettings.custom_prompt_post_processing = 'merge';
+  select.value = 'merge';
+  ui.bus.emit('settings');
+  assert.equal(select.value, 'merge_tools', 'enabled mode follows chosen processing');
+  defaults.setMode('off');
+  assert.equal(select.value, 'strict');
+  defaults.dispose();
+  dom.window.close();
   const sent = [];
   const originalFetch = async (_url, init) => {
     sent.push(JSON.parse(init.body));

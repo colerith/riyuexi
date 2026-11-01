@@ -152,6 +152,7 @@ export interface QuickSwitchPromptGroupConfig {
 }
 
 export interface BuiltinQuickSwitchScheme {
+  discussion?: boolean;
   name: string;
   /** 面板分区名称；相同名称自动归入同一区，首次出现的顺序即分区顺序。 */
   section?: string;
@@ -194,6 +195,7 @@ export interface QRPreset {
     long: LengthPreset;
   };
   quickSwitchProfiles: { [id: string]: QuickSwitchProfile };
+  discussionByPreset?: Record<string, import('./discussion').DiscussionConfig>;
   quickSwitchRuntimeStates?: { [id: string]: QuickSwitchRuntimeState };
 }
 

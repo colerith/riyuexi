@@ -1,3 +1,5 @@
+import { isRiyuexiPreset } from './presetIdentity';
+
 const REASONING_FORMATTING_VERSION = 1;
 const REASONING_TEMPLATE = {
   name: '日月西',
@@ -31,7 +33,7 @@ export async function ensureReasoningFormatting(options: {
 }): Promise<boolean> {
   if (options.isEnabled?.() === false) return false;
   const loadedPresetName = (options.getLoadedPresetName() || '').trim();
-  if (!loadedPresetName.includes('日月西')) {
+  if (!isRiyuexiPreset(loadedPresetName)) {
     const $select = $('#reasoning_select');
     const blankName = $select
       .find('option')
@@ -92,7 +94,7 @@ export { REASONING_FORMATTING_VERSION };
 
 /** 只读检查当前酒馆配置，不覆盖用户正在编辑的内容。 */
 export function inspectReasoningFormatting(getLoadedPresetName: () => string | null) {
-  if (!(getLoadedPresetName() || '').includes('日月西')) {
+  if (!isRiyuexiPreset(getLoadedPresetName())) {
     return { state: 'inactive', title: '当前预设不适用', details: ['切换到日月西预设后自动检查。'] };
   }
   const fields: Array<[string, string, string | boolean]> = [

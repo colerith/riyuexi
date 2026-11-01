@@ -9,6 +9,8 @@ export interface ToolInputOptions {
   onOutputChange?: (enabled: boolean) => void;
   onStatusChange?: () => void;
   isDisposed?: () => boolean;
+  getPresetName?: () => string | null;
+  isRiyuexiPreset?: () => boolean;
   host?: any;
 }
 export interface ToolInputController {
@@ -70,6 +72,31 @@ export async function registerToolInput(options: ToolInputOptions): Promise<Tool
   }
   let mode: ToolInputMode = options.mode,
     outputEnabled = options.outputEnabled === true;
+  function syncPostProcessing(resetWhenOff: unknown = false) {
+    const enabled = mode !== 'off' || outputEnabled;
+    const isRiyuexi = options.isRiyuexiPreset?.() ?? (options.getPresetName?.() || '').includes('日月西');
+    if (disposed || (!enabled && !isRiyuexi && resetWhenOff !== true)) return;
+    const context = getContext();
+    const settings = context?.chatCompletionSettings;
+    if (!settings) return;
+    const current = String(settings.custom_prompt_post_processing ?? '');
+    const next = enabled ? PROCESSING[current] : 'strict';
+    // “无”不需要改动；已经含工具的选项仍检查界面是否同步。
+    if (enabled && !next?.endsWith('_tools')) return;
+    const select = host.document?.querySelector('#custom_prompt_post_processing') as HTMLSelectElement | null;
+    if (select && !Array.from(select.options).some(option => option.value === next)) return;
+    const settingsChanged = current !== next;
+    settings.custom_prompt_post_processing = next;
+    if (select && select.value !== next) {
+      select.value = next;
+      // 触发酒馆原生处理器，同时刷新工具支持状态并保存设置。
+      select.dispatchEvent(new host.Event('change', { bubbles: true }));
+    } else if (settingsChanged && typeof context.saveSettingsDebounced === 'function') {
+      void Promise.resolve(context.saveSettingsDebounced()).catch(error => {
+        console.warn('预设助手[工具调用]: 保存后处理设置失败', error);
+      });
+    }
+  }
   const clone = (x: any) => JSON.parse(JSON.stringify(x));
   const jsonResponse = (value: any) =>
     new host.Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json; charset=utf-8' } });
@@ -558,6 +585,7 @@ export async function registerToolInput(options: ToolInputOptions): Promise<Tool
     if (!MODES.includes(next)) throw new Error('未知输入模式。');
     mode = next;
     options.onModeChange(mode);
+    syncPostProcessing(mode === 'off');
     syncHook();
     notify();
     return mode;
@@ -566,6 +594,7 @@ export async function registerToolInput(options: ToolInputOptions): Promise<Tool
     assertIdle();
     outputEnabled = Boolean(next);
     options.onOutputChange?.(outputEnabled);
+    syncPostProcessing(!outputEnabled);
     syncHook();
     notify();
     return outputEnabled;
@@ -580,6 +609,8 @@ export async function registerToolInput(options: ToolInputOptions): Promise<Tool
   else ctx.eventSource.on(events.CHAT_COMPLETION_SETTINGS_READY, onReady);
   ctx.eventSource.on(events.GENERATION_STOPPED, stopAll);
   ctx.eventSource.on(events.CHAT_CHANGED, stopAll);
+  const settingsEvents = [...new Set([events.SETTINGS_UPDATED, events.CHATCOMPLETION_PRESET_CHANGED].filter(Boolean))];
+  settingsEvents.forEach(event => ctx.eventSource.on(event, syncPostProcessing));
   function dispose() {
     if (disposed) return;
     disposed = true;
@@ -587,6 +618,7 @@ export async function registerToolInput(options: ToolInputOptions): Promise<Tool
     ctx.eventSource.removeListener(events.CHAT_COMPLETION_SETTINGS_READY, onReady);
     ctx.eventSource.removeListener(events.GENERATION_STOPPED, stopAll);
     ctx.eventSource.removeListener(events.CHAT_CHANGED, stopAll);
+    settingsEvents.forEach(event => ctx.eventSource.removeListener(event, syncPostProcessing));
     syncHook();
     if (host[API]?.dispose === dispose) delete host[API];
   }
@@ -604,5 +636,6 @@ export async function registerToolInput(options: ToolInputOptions): Promise<Tool
     dispose,
   };
   syncHook();
+  syncPostProcessing();
   return host[API] as ToolInputController;
 }

@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
 const ts = require('typescript');
 const { JSDOM } = require('jsdom');
-const root = 'tavern-helper/预设助手';
+const root = 'src/util/酒馆助手脚本/预设助手';
 function load(file, edition) {
   const context = vm.createContext({
     exports: {},
@@ -29,21 +29,22 @@ function load(file, edition) {
     ['0.42', '0.42.10', '1.0.2', 'v042'],
   ]) {
     const logs = load(`${root}/changelog.ts`, edition);
-    assert.equal(logs.CURRENT_CHANGELOG_VERSION, edition);
-    assert.equal(logs.CHANGELOGS[0].version, edition);
-    if (edition === '0.42') assert.ok(logs.CHANGELOGS.every(entry => entry.version !== '1.0'));
+    const latestVersion = edition === '1.0' ? '1.1' : '0.42';
+    assert.equal(logs.CURRENT_CHANGELOG_VERSION, latestVersion);
+    assert.equal(logs.CHANGELOGS[0].version, latestVersion);
+    if (edition === '0.42') assert.ok(logs.CHANGELOGS.every(entry => !entry.version.startsWith('1.')));
     const document = new JSDOM(logs.renderChangelogEntries()).window.document;
     assert.equal(document.querySelectorAll('.changelog-latest-tag').length, 1);
     const latest = document.querySelector('.changelog-entry-body');
     const original = fs
-      .readFileSync(`${root}/changelogs/v${edition}.md`, 'utf8')
+      .readFileSync(`${root}/changelogs/v${latestVersion}.md`, 'utf8')
       .split(/\r?\n/)
       .slice(1)
       .map(line => line.replace(/^(?:> |##? |\s*- )/, ''))
       .filter(Boolean)
       .join('');
-    assert.equal(latest.textContent.replace(/\s/g, ''), original.replace(/\s/g, ''));
-    const api = load('git-loader/runtime.ts', edition);
+    assert.equal(latest.textContent.replace(/\s/g, ''), original.replace(/\*\*/g, '').replace(/\s/g, ''));
+    const api = load('scripts/preset-git-loader/runtime.ts', edition);
     const code = 'window.presetTest = true;';
     const sha256 = createHash('sha256').update(code).digest('hex');
     assert.ok(api.validCache({ version, code, sha256 }));

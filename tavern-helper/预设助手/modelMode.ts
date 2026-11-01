@@ -1,4 +1,5 @@
 import type { BuiltinQuickSwitchRule, BuiltinQuickSwitchScheme, QRPreset, StorageData } from './types';
+import { isRiyuexiPreset } from './presetIdentity';
 
 const FLASH_CUSTOM_EXCLUDE_BODY = ['presence_penalty', 'frequency_penalty', 'top_p', 'top_k', 'temperature']
   .map(parameter => `- ${parameter}`)
@@ -60,7 +61,7 @@ export function getPrefillStatus(storage: StorageData, schemes: BuiltinQuickSwit
   const mode = schemes
     .flatMap(scheme => (scheme.type === 'mode' ? scheme.modes || [] : []))
     .find(item => matchesModel(model, item.modelPattern));
-  const supportedPreset = (presetName || '').includes('日月西');
+  const supportedPreset = isRiyuexiPreset(presetName);
   const automatic = supportedPreset && !!mode?.startReplyWith;
   const override = model ? storage.prefillOverrides?.[key] : undefined;
   const enabled = override ?? automatic;
@@ -89,7 +90,7 @@ export async function syncModelLinkedQuickSwitch(options: {
   await syncCustomExcludeBody(model);
 
   const loadedPresetName = (options.getLoadedPresetName() || '').trim();
-  if (!loadedPresetName.includes('日月西')) {
+  if (!isRiyuexiPreset(loadedPresetName)) {
     return false;
   }
   if (!model) return false;

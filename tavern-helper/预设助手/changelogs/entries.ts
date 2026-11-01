@@ -1,6 +1,14 @@
 // 对应同目录的用户原文 Markdown；只转换排版，不改写内容。
 export const newChangelogs = [
   {
+    version: '1.1',
+    title: '⚖️日月西 更新日志 |',
+    intro:
+      '<em>一个小更新！因为最近好像没有收到太多反馈正文效果之类的，所以主要是修修bug和调整工具</em><br><em>新增了一个【工具抗截断】，可以在【预设助手-面板设置】中开启，原理就是通过将用户输入包装成工具请求来规避输入审核，应该是比常规的预设内破限更强力，有需要可以开启，<strong>需要你的渠道能够支持工具调用，比如pg反代</strong></em><br><em>关于道歉、标记、路由，我这两天会专门出个说明解答疑惑（非专业）</em>',
+    bodyHtml:
+      '<section class="changelog-section"><h2>💎 预设更新</h2><div class="changelog-subtitle" role="heading" aria-level="3">🔒 预设头部与尾部</div><ul><li>新增【Gemini头部③】，保留原有头部选项，按需切换。</li><li>调整尾部分区：将抗截断、尾部破限与思维链尾部分开归类，方便查找。</li><li>重写【授权协议①】，加入多语言随机版本；新增【授权协议②—⑤】，本版默认启用⑤。</li></ul><div class="changelog-subtitle" role="heading" aria-level="3">💬 段评与论坛</div><ul><li>将原来的论坛开关扩展为三种模式：【段评一键开关】【论坛一键开关】【段评&amp;论坛开关】，本版默认开启段评与论坛联动。</li><li>新增正文段评（二改 @蛾摩拉 &amp; 蓝图）：在适合讨论的段落旁插入评论，让激活群组里的角色参与分析、嗑CP、争论和吐槽，这个非常非常萌！！！！</li></ul><div class="changelog-subtitle" role="heading" aria-level="3">✒️ 写作与扮演选项</div><ul><li>优化【随机结尾】与【对话结尾】：对白收尾时禁止半句话、反问和选择问句。</li><li>优化【扮演选项】：选项对白同样避免反问和选择问句，不再用括号标注选项风格，保留完整的用户视角对话与动作。</li></ul></section><section class="changelog-section"><h2>🌟脚本更新</h2><div class="changelog-subtitle" role="heading" aria-level="3">预设助手</div><ul><li>新增【工具调用开关】，支持【合成读取·一次请求】与【真实读取·两次请求】，默认关闭；处理请求副本，不修改聊天原文。</li><li>新增输出工具相关选项，并调整工具调用兼容处理。</li><li>联动酒馆的提示词后处理：使用日月西时默认采用【严格（不含工具）】，开启工具调用后按选项调整；关闭相关工具开关后恢复严格不含工具。</li><li>完善日月西识别：除预设名称外，也会检查【预设简介】中的“日月西”关键词，改名后仍可识别。</li></ul><div class="changelog-subtitle" role="heading" aria-level="3">日月西段评</div><ul><li>新增【日月西-段评美化】脚本，配合正文段评显示评论入口与阅读面板。</li><li>支持评论点赞、排序，以及上一段、下一段切换。</li><li>提供多种外观、昼夜模式与字体设置，支持自定义字体链接。</li><li>提供重新识别与诊断日志，方便排查段评未正常显示的问题。</li></ul><div class="changelog-subtitle" role="heading" aria-level="3">日月来信</div><ul><li>优化宿主主题兼容，减少酒馆主题对按钮布局、显示状态和文字阴影的影响。</li><li>调整浅色信纸样式。</li></ul></section><section class="changelog-section"><h2>🌷正则更新</h2><ul><li>更新【不发送多余内容】：补充过滤段评及相关段落标签，避免这些内容随聊天记录重复发送。</li></ul></section>',
+  },
+  {
     version: '1.0',
     title: '⚖️日月西 更新日志 |',
     intro:

@@ -1,3 +1,4 @@
+import { discussionCard, resolveDiscussionConfig } from './discussion';
 import { containOverlayScroll } from '../../overlay';
 import { getLatestChangelog, renderChangelogEntries, type ChangelogEntry } from './changelog';
 import { defaultCommands } from './constants';
@@ -938,6 +939,10 @@ export async function renderQuickSwitchPanel(deps: RenderQuickSwitchPanelDeps) {
       const profileId = `builtin:${index}`;
       const section = String(item.section || '其他').trim() || '其他';
       const runtimeState = activePreset.quickSwitchRuntimeStates?.[profileId];
+      if (item.discussion) {
+        const name = typeof getLoadedPresetName === 'function' ? getLoadedPresetName() : '';
+        return { section, html: discussionCard(resolveDiscussionConfig(activePrompts, activePreset.discussionByPreset?.[name]), activePrompts) };
+      }
       const isCustomizeScheme = item?.type === 'customize';
       const isModeScheme = item?.type === 'mode' && Array.isArray(item?.modes) && item.modes.length > 0;
 

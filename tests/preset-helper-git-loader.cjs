@@ -3,7 +3,7 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
 const ts = require('typescript');
-const source = fs.readFileSync('git-loader/runtime.ts', 'utf8');
+const source = fs.readFileSync('scripts/preset-git-loader/runtime.ts', 'utf8');
 const context = vm.createContext({ exports: {}, require, TextEncoder, console: { warn() {}, info() {} } });
 vm.runInContext(
   ts.transpileModule(source, {

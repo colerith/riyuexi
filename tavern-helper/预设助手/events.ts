@@ -1,3 +1,4 @@
+import { applyDiscussionMode, resolveDiscussionConfig, openDiscussionConfig, type DiscussionMode } from './discussion';
 import { defaultCommands } from './constants';
 import { containOverlayScroll } from '../../overlay';
 import type { QuickSwitchPromptGroupConfig } from './types';
@@ -4828,6 +4829,42 @@ export function bindGeneralActionHandler(deps: BindGeneralActionsDeps) {
           toastr.error('更新子选项失败，请查看控制台日志');
         }
 
+        break;
+      }
+      case 'configure_discussion':
+      case 'apply_discussion_mode': {
+        const activeId = deps.getActivePresetId();
+        const target = deps.storage.presets[activeId];
+        const presetName = deps.getLoadedPresetName();
+        const characterId = deps.getCharacterId();
+        if (!target || !presetName) { toastr.warning('请先加载预设'); break; }
+        const current = () => deps.getActivePresetId() === activeId && deps.getLoadedPresetName() === presetName && deps.getCharacterId() === characterId;
+        const config = resolveDiscussionConfig(deps.getPreset('in_use').prompts || [], target.discussionByPreset?.[presetName]);
+        if (action === 'configure_discussion') {
+          if ($('.discussion-overlay').length) break;
+          const result = await openDiscussionConfig(deps.getPreset('in_use').prompts || [], config,
+            dialog => mountDialogWithThemeAndDrag(panel, dialog, '.qs-sub-panel'));
+          if (!result) break;
+          if (!current()) { toastr.warning('预设或角色已切换，请重新定制'); break; }
+          target.discussionByPreset ||= {};
+          target.discussionByPreset[presetName] = result;
+          target.updateTime = Date.now();
+          deps.saveStorage();
+          await deps.triggerRenderQuickSwitchPanel();
+          toastr.success('配置已保存，点击模式即可应用');
+          break;
+        }
+        btn.prop('disabled', true);
+        try {
+          await deps.updatePresetWith('in_use', preset => {
+            if (!current()) throw new Error('预设或角色已切换，已取消操作');
+            return applyDiscussionMode(preset, config, String(id) as DiscussionMode | 'off');
+          });
+          if (current()) await deps.triggerRenderQuickSwitchPanel();
+          toastr.success('讨论模式已更新');
+        } catch (error) {
+          toastr.error(error instanceof Error ? error.message : String(error));
+        } finally { btn.prop('disabled', false); }
         break;
       }
       case 'select_quick_switch_mode': {

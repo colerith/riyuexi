@@ -1,4 +1,5 @@
 import { createPromptStateWriter } from './presetWrite';
+import { isRiyuexiPreset } from './presetIdentity';
 import { registerToolInput, type ToolInputMode } from './toolInput';
 import { bindMewoSummary } from './mewoSummary';
 import { handleQuickRequest, quickRequestActions, summaryActions } from './actions';
@@ -144,6 +145,8 @@ async function initializeToolInput() {
             : 'single-shot'
           : 'off',
       isDisposed: () => toolInputDisposed,
+      getPresetName: () => getLoadedPresetName(),
+      isRiyuexiPreset: () => isRiyuexiPreset(getLoadedPresetName()),
       outputEnabled: storage.toolOutputEnabled === true,
       onOutputChange: enabled => {
         storage.toolOutputEnabled = enabled;
@@ -192,7 +195,7 @@ type UiSkin = 'yuedu' | 'xiangyata';
 function resolveUiSkinByLoadedPresetName(): UiSkin {
   const loadedPresetName = (getLoadedPresetName?.() || '').trim();
   if (loadedPresetName.includes('象牙塔')) return 'xiangyata';
-  if (loadedPresetName.includes('日月西')) return 'yuedu';
+  if (isRiyuexiPreset(loadedPresetName)) return 'yuedu';
   return 'yuedu';
 }
 

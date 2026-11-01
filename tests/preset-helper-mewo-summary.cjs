@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 const { JSDOM } = require('jsdom');
 
-const source = fs.readFileSync('tavern-helper/预设助手/mewoSummary.ts', 'utf8');
+const source = fs.readFileSync('src/util/酒馆助手脚本/预设助手/mewoSummary.ts', 'utf8');
 const code = ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
 }).outputText;
